@@ -1,0 +1,22 @@
+# Python
+backend/.venv/
+backend/.pgdata/
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Node / frontend / desktop builds
+frontend/node_modules/
+frontend/dist/
+desktop/node_modules/
+desktop/dist/
+node_modules/
+
+# Logs & OS cruft
+*.log
+.DS_Store
+**/.DS_Store
+
+# Local env / secrets
+.env
+*.local

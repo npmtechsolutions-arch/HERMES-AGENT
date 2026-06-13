@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      display: grid; place-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: radial-gradient(800px 500px at 70% -10%, #e7defb 0%, #f5f6fb 60%);
+      color: #15182a;
+    }
+    .box { text-align: center; }
+    .logo {
+      width: 72px; height: 72px; border-radius: 22px; margin: 0 auto 22px;
+      background: linear-gradient(135deg, #6d5efc, #8b5cf6 55%, #a855f7);
+      box-shadow: 0 18px 40px -12px rgba(109,94,252,.55); position: relative;
+    }
+    .logo::after { content: ''; position: absolute; inset: 18px; border-radius: 12px;
+      background: rgba(255,255,255,.9);
+      -webkit-mask: radial-gradient(circle at 50% 45%, #000 38%, transparent 40%); }
+    h1 { font-size: 30px; margin: 0; letter-spacing: -.02em; font-weight: 800; }
+    p { color: #6b7390; font-size: 14px; margin: 8px 0 26px; }
+    .boot { font-size: 13px; color: #6d5efc; font-weight: 600; min-height: 18px; }
+    .spinner { width: 26px; height: 26px; margin: 18px auto 0; border-radius: 50%;
+      border: 3px solid #e1e4ef; border-top-color: #6d5efc; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="logo"></div>
+    <h1>HERMUS</h1>
+    <p>Your private AI workforce — starting locally…</p>
+    <div class="boot" id="boot">Preparing your machine…</div>
+    <div class="spinner"></div>
+  </div>
+  <script>
+    window.__setBoot = (m) => { document.getElementById('boot').textContent = m }
+  </script>
+</body>
+</html>

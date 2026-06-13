@@ -1,0 +1,686 @@
+
+http://localhost:5173/verticals
+
+check this page and check all the links and buttons.
+fix all the issues in this page 
+test all the features covered in this page
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. There are many verticals industry , we have to add all the verticals dont miss even the small verticals, let us show all the verticals and user decides which one to choose
+
+3. Always add the success and error message clearly in the UI
+
+4. Always proper logs and capture the activity too.
+
+5. There should be an option to undeploy or uninstall so that the changes will reflect in UI
+
+http://localhost:5173/solutions
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. There are many solutions , we have to add all the solutions dont miss even the small solutions, let us show all the solutions and user decides which one to choose
+
+3. Always add the success and error message clearly in the UI
+
+4. Always proper logs and capture the activity too.
+
+5. There should be an option to undeploy or uninstall so that the changes will reflect in UI
+
+
+http://localhost:5173/universal
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. There are many universal engines , we have to add all the universal engines dont miss even the small universal engines, let us show all the engine and user decides which one to choose
+
+3. Always add the success and error message clearly in the UI
+
+4. Always proper logs and capture the activity too.
+
+5. There should be an option to undeploy or uninstall so that the changes will reflect in UI
+
+
+
+http://localhost:5173/company
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+3. in AI Org Builder section, Product / focus (optional) list shows only General Operations, if there is anyother things to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/org
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+
+2. If there is any advanced features to be added please add it. 
+
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/chatbots
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+
+2. If there is any advanced features to be added please add it.
+
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/agent-team
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+
+2. If there is any advanced features to be added please add it.
+
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/tasks
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+
+2. If there is any advanced features to be added please add it.
+
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/recipes
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+We have to add more universal recipies in this section
+
+2. If there is any advanced features to be added please add it.
+
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+
+http://localhost:5173/pipelines
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/skills
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/workflows
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/rehearsal
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/approvals
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/inbox
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/brain
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/graph
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/analytics
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/reliability
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/backup
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+http://localhost:5173/remote
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+
+http://localhost:5173/gateway
+
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+We have our own local llm, your cloud key, there is no option for the user to configure their own cloud key
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/compliance
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+We have our own local llm, your cloud key, there is no option for the user to configure their own cloud key
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+
+http://localhost:5173/webhooks
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+We have our own local llm, your cloud key, there is no option for the user to configure their own cloud key
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/marketplace
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+
+1. I want all the actions in this page should be executed via voice based too, so kindly make sure simple statments where the user speaks and actions should be performed accordingly in this page.
+
+We have to show all the packs so that the user installs and uses it.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+http://localhost:5173/settings
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+Our product is completely based on Hermes agent, we have to bring the all necessary configurations of Hermes agent for better ourput
+Analyse all the Hermes agent configuration and bring this section.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5. There should be an option to undeploy or uninstall so that the changes will reflect in UI
+
+
+
+
+
+
+
+http://localhost:5173/admin
+
+check this page and check all the links and buttons.
+fix all the issues in this page
+test all the features covered in this page
+
+Our product is completely based on Hermes agent, we have to bring the all necessary configurations of Hermes agent for better ourput
+Analyse all the Hermes agent configuration and bring this section. if possible in settings.
+
+2. If there is any advanced features to be added please add it.
+
+4. Always add the success and error message clearly in the UI
+
+5. Always proper logs and capture the activity too.
+
+6. Verify and test all the featues in this page
+
+
+in admin dashboard 
+
+everything the user gets in his dashboard must be configurable and enabled/disabled by the admin dashboard
+
+admin should have all the controls
+
+so we have verticals, solutions, universal and marketplace everything come under admins approval
+
+that will be the finest flow right,
+
+admin can create in the above 4 sections and publish and it should be visible for the users to use
+
+that will be the finest flow right
+
+
+Now this product is going to be a desktop application for Windows, Mac and Linux Users.
+
+So how this desktop app works for the users for the first time is really more important.
+
+How it projects our product is really important 
+
+How it makes the user to setup quicklly with out pain is more important
+
+setting up this application should be very easy 
+
+product tour is must, 
+
+User should be well guided while using this desktop app 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

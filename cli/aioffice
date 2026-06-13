@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""
+aioffice — HERMUS developer CLI (G7).
+
+A thin client over the local Core Service API for developers / IT admins who
+prefer the terminal (and for headless / CI use). Speaks to the same local API
+the desktop app uses.
+
+Usage:
+  aioffice login                       # cache a token (uses demo creds by default)
+  aioffice agents                      # list agents + status
+  aioffice tasks                       # list tasks
+  aioffice plan "prepare the GST report and email my CA"
+  aioffice submit "draft a vendor follow-up" [--execute]
+  aioffice skills                      # list skills (incl. auto-captured)
+  aioffice remote "what's pending"     # send a remote command (first paired channel)
+  aioffice bootstrap [industry]        # instant-start demo workspace
+
+Env: HERMUS_API (default http://127.0.0.1:7700/api/v1),
+     HERMUS_EMAIL / HERMUS_PASSWORD (default demo user).
+"""
+import json
+import os
+import sys
+import urllib.request
+
+API = os.environ.get("HERMUS_API", "http://127.0.0.1:7700/api/v1")
+TOKEN_PATH = os.path.expanduser("~/.hermus_cli_token")
+
+
+def _req(method, path, body=None, token=None):
+    data = json.dumps(body).encode() if body is not None else None
+    r = urllib.request.Request(API + path, data=data, method=method)
+    r.add_header("Content-Type", "application/json")
+    if token:
+        r.add_header("Authorization", f"Bearer {token}")
+    try:
+        with urllib.request.urlopen(r, timeout=300) as resp:
+            return json.load(resp)
+    except urllib.error.HTTPError as e:
+        print(f"error {e.code}: {e.read().decode()[:200]}", file=sys.stderr)
+        sys.exit(1)
+    except urllib.error.URLError:
+        print("Cannot reach the HERMUS core service. Is it running on "
+              f"{API}?", file=sys.stderr)
+        sys.exit(1)
+
+
+def _token():
+    if os.path.exists(TOKEN_PATH):
+        return open(TOKEN_PATH).read().strip()
+    print("Not logged in. Run: aioffice login", file=sys.stderr)
+    sys.exit(1)
+
+
+def cmd_login(_):
+    email = os.environ.get("HERMUS_EMAIL", "user@gmail.com")
+    pw = os.environ.get("HERMUS_PASSWORD", "user")
+    r = _req("POST", "/auth/login", {"email": email, "password": pw})
+    open(TOKEN_PATH, "w").write(r["token"])
+    print(f"Logged in as {r['user']['email']} ({r['user']['tenant']['company_name']}).")
+
+
+def cmd_agents(_):
+    for a in _req("GET", "/agents", token=_token()):
+        ceo = " [CEO]" if a.get("is_ceo") else ""
+        print(f"  {a['status']:<10} {a['name']:<14} {a['designation']}{ceo}  ({a.get('model_tier','local')})")
+
+
+def cmd_tasks(_):
+    for t in _req("GET", "/tasks", token=_token()):
+        print(f"  {t['status']:<10} {t['priority']:<7} {t['title']}")
+
+
+def cmd_skills(_):
+    for s in _req("GET", "/skills", token=_token()):
+        tag = "auto" if s["source"] == "auto_captured" else s["source"]
+        print(f"  [{s['status']:<8}] {tag:<6} {s['name']}  ({int(s.get('confidence',0)*100)}%)")
+
+
+def cmd_plan(args):
+    r = _req("POST", "/tasks/plan", {"utterance": " ".join(args), "use_llm": False}, token=_token())
+    print(f"engine: {r['engine']}  estimate: {r['estimate_minutes']}m")
+    for s in r["subtasks"]:
+        print(f"  {s['step']}. {s['description']}  -> {s['agent_name']}")
+    print("approval:", r["approval"]["rule"], "required" if r["requires_approval"] else "auto")
+
+
+def cmd_submit(args):
+    execute = "--execute" in args
+    text = " ".join(a for a in args if a != "--execute")
+    tok = _token()
+    plan = _req("POST", "/tasks/plan", {"utterance": text, "use_llm": False}, token=tok)
+    t = _req("POST", "/tasks", {"title": text[:80], "utterance": text, "plan": plan}, token=tok)
+    print("created task", t["id"])
+    if execute:
+        r = _req("POST", f"/tasks/{t['id']}/execute", token=tok)
+        print("status:", r["status"], "(approval required)" if r.get("approval_required") else "")
+
+
+def cmd_remote(args):
+    tok = _token()
+    chans = _req("GET", "/remote/channels", token=tok)
+    paired = [c for c in chans if c["status"] == "paired"]
+    if not paired:
+        print("No paired remote channel. Pair one in the app first.", file=sys.stderr)
+        sys.exit(1)
+    c = paired[0]
+    r = _req("POST", "/remote/command", {"channel_id": c["id"],
+             "sender": (c.get("sender_allowlist") or ["cli"])[0], "message": " ".join(args)}, token=tok)
+    print(f"[{r['intent']}{'' if r['allowed'] else '/blocked'}] {r['response']}")
+
+
+def cmd_bootstrap(args):
+    industry = " ".join(args) or "Chartered Accountants & Tax Consultants"
+    r = _req("POST", "/demo/bootstrap", {"industry": industry}, token=_token())
+    print("bootstrap:", r)
+
+
+COMMANDS = {
+    "login": cmd_login, "agents": cmd_agents, "tasks": cmd_tasks, "skills": cmd_skills,
+    "plan": cmd_plan, "submit": cmd_submit, "remote": cmd_remote, "bootstrap": cmd_bootstrap,
+}
+
+
+def main():
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        print(__doc__)
+        return
+    cmd = sys.argv[1]
+    if cmd not in COMMANDS:
+        print(f"unknown command: {cmd}\n{__doc__}", file=sys.stderr)
+        sys.exit(1)
+    COMMANDS[cmd](sys.argv[2:])
+
+
+if __name__ == "__main__":
+    main()

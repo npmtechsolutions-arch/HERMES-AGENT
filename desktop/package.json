@@ -1,0 +1,41 @@
+{
+  "name": "hermus-desktop",
+  "version": "1.0.0",
+  "description": "HERMUS — AI Office Assistant desktop app (local execution plane)",
+  "main": "main.js",
+  "author": "HERMUS <support@hermus.app>",
+  "homepage": "https://hermus.app",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "dev": "HERMUS_DEV=1 electron .",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "app.hermus.desktop",
+    "productName": "HERMUS",
+    "files": ["main.js", "preload.js", "splash.html", "assets/**"],
+    "extraResources": [
+      { "from": "../backend", "to": "backend", "filter": ["**/*", "!.venv/**", "!.pgdata/**", "!__pycache__/**"] },
+      { "from": "../frontend/dist", "to": "frontend" }
+    ],
+    "mac": { "category": "public.app-category.productivity", "target": ["dmg", "zip"] },
+    "win": { "target": ["nsis"] },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowElevation": true,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "HERMUS",
+      "uninstallDisplayName": "HERMUS ${version}",
+      "deleteAppDataOnUninstall": true
+    },
+    "linux": { "target": ["AppImage", "deb"], "category": "Office", "maintainer": "HERMUS <support@hermus.app>" }
+  }
+}
