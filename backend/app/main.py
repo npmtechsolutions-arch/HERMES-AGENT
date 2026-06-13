@@ -73,9 +73,19 @@ def startup():
     hub.bind_loop()
 
 
+@app.get("/")
+def root():
+    return {"service": "HERMUS API", "status": "ok", "docs": "/docs", "health": "/api/v1/health"}
+
+
 @app.get("/api/v1/health")
 def health():
     return {"status": "ok", "service": "hermus", "plane": "cloud+local"}
+
+
+@app.get("/api/v1/health/plain")
+def health_plain():
+    return {"status": "ok"}
 
 
 @app.websocket("/ws/v1/events")
