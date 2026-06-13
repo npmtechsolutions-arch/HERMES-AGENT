@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import Principal, audit, current_admin, current_user
-from ..models import AdminUser, Subscription, Tenant, TenantMember, User
+from ..models import AdminUser, Plan, Subscription, Tenant, TenantMember, User
 from ..security import create_token, hash_password, ulid, verify_password
 from ..models import now
 
@@ -66,10 +66,16 @@ def signup(body: SignupIn, db: Session = Depends(get_db)):
                     company_name=body.company_name or f"{body.full_name}'s Company",
                     industry=body.industry, region="IN", status="active")
     member = TenantMember(id=ulid("mem"), tenant_id=tenant.id, user_id=user.id, role="owner")
-    # default everyone onto the trial plan
-    sub = Subscription(id=ulid("sub"), tenant_id=tenant.id, plan_id="pln_trial",
-                       status="trialing", trial_ends_at=now())
-    db.add_all([user, tenant, member, sub])
+    # Insert each level separately so referenced rows exist before the rows that
+    # reference them (the unit-of-work doesn't order these FKs reliably, so we
+    # force it): user → tenant → member/subscription.
+    db.add(user); db.flush()
+    db.add(tenant); db.flush()
+    db.add(member)
+    # default everyone onto the trial plan (only if it exists)
+    if db.get(Plan, "pln_trial"):
+        db.add(Subscription(id=ulid("sub"), tenant_id=tenant.id, plan_id="pln_trial",
+                            status="trialing", trial_ends_at=now()))
     audit(db, plane="cloud", actor=f"user:{user.id}", action="auth.signup", tenant_id=tenant.id)
     db.commit()
     token = create_token(user.id, "user", {"tenant_id": tenant.id})
