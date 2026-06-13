@@ -196,11 +196,16 @@ async function createWindow() {
   const send = (m) => win && win.webContents.executeJavaScript(
     `window.__setBoot && window.__setBoot(${JSON.stringify(m)})`).catch(() => {})
 
-  await ensurePostgres(send)
-  const beOk = await ensureBackend(send)
+  // Online mode (packaged build): the backend + database run in the cloud, so we
+  // only serve the bundled UI and manage the local AI runtime (Ollama). The full
+  // local stack (Postgres + FastAPI) is started only in dev.
+  if (DEV) {
+    await ensurePostgres(send)
+    await ensureBackend(send)
+  }
   const uiBase = await startStaticServer()
-  send(beOk ? 'Opening HERMUS…' : 'Core service unavailable — check Setup.')
-  await sleep(500)
+  send('Opening HERMUS…')
+  await sleep(300)
 
   // Flow: launch → login → (first run) install everything → dashboard.
   // The post-login redirect to /welcome handles first-run install; we just open

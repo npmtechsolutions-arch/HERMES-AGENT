@@ -1,12 +1,17 @@
 // Secure bridge between the renderer (React UI) and the Electron main process.
 const { contextBridge, ipcRenderer } = require('electron')
 
-const API_PORT = 7700
+// The desktop app is an ONLINE client: it talks to the hosted backend + database
+// and only runs the AI runtime (Ollama) locally. In dev (HERMUS_DEV=1) it talks
+// to the local backend instead. Override with HERMUS_API_URL.
+const DEV = process.env.HERMUS_DEV === '1'
+const API_ROOT = process.env.HERMUS_API_URL
+  || (DEV ? 'http://127.0.0.1:7700' : 'https://hermes-agent-hw8v.onrender.com')
 
 contextBridge.exposeInMainWorld('hermus', {
   isElectron: true,
-  apiBase: `http://127.0.0.1:${API_PORT}/api/v1`,
-  wsBase: `ws://127.0.0.1:${API_PORT}/ws/v1/events`,
+  apiBase: `${API_ROOT}/api/v1`,
+  wsBase: `${API_ROOT.replace(/^http/, 'ws')}/ws/v1/events`,
 
   systemInfo: () => ipcRenderer.invoke('sys-info'),
   systemHealth: () => ipcRenderer.invoke('system-health'),

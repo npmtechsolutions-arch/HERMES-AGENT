@@ -26,6 +26,7 @@
     "mac": { "category": "public.app-category.productivity", "target": ["dmg", "zip"] },
     "win": { "target": ["nsis"] },
     "nsis": {
+      "artifactName": "HERMUS-Setup-${version}.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowElevation": true,

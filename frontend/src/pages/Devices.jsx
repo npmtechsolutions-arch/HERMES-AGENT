@@ -3,6 +3,15 @@ import { api } from '../api'
 import Icon from '../components/Icon'
 import { Loading, PageHead, Pill } from '../components/ui'
 
+// Desktop installers, hosted as GitHub Release assets (tag v1.0.0).
+const REL = 'https://github.com/npmtechsolutions-arch/HERMES-AGENT/releases/download/v1.0.0'
+const DL = {
+  win: `${REL}/HERMUS-Setup-1.0.0.exe`,
+  mac: `${REL}/HERMUS-1.0.0.dmg`,
+  linux: `${REL}/HERMUS-1.0.0.AppImage`,
+  deb: `${REL}/hermus-desktop_1.0.0_amd64.deb`,
+}
+
 export default function Devices() {
   const [devices, setDevices] = useState(null)
   const load = () => api.get('/devices').then(setDevices)
@@ -35,12 +44,16 @@ export default function Devices() {
       </div>
       <div className="card mt">
         <h3>Download desktop app</h3>
-        <p className="muted">Install the local Core Service (Electron). All business data stays on your machine.</p>
+        <p className="muted">Install the HERMUS desktop app (Electron). It runs the AI runtime locally and connects to your HERMUS account.</p>
         <div className="row-actions">
-          <button className="btn secondary"><Icon name="download" size={15} /> Windows</button>
-          <button className="btn secondary"><Icon name="download" size={15} /> macOS</button>
-          <button className="btn secondary"><Icon name="download" size={15} /> Linux</button>
+          <a className="btn secondary" href={DL.win} download><Icon name="download" size={15} /> Windows (.exe)</a>
+          <a className="btn secondary" href={DL.mac} download><Icon name="download" size={15} /> macOS (.dmg)</a>
+          <a className="btn secondary" href={DL.linux} download><Icon name="download" size={15} /> Linux (.AppImage)</a>
+          <a className="btn ghost" href={DL.deb} download><Icon name="download" size={15} /> Linux (.deb)</a>
         </div>
+        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+          After installing, sign in with your account. On first run it installs the local AI models (one-time download).
+        </p>
       </div>
     </>
   )
