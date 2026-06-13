@@ -1,16 +1,34 @@
 """Central configuration for the HERMUS Cloud + Local Core API."""
 import os
 
-DB_HOST = os.getenv("HERMUS_DB_HOST", "127.0.0.1")
-DB_PORT = os.getenv("HERMUS_DB_PORT", "5544")
-DB_USER = os.getenv("HERMUS_DB_USER", "hermus")
-DB_NAME = os.getenv("HERMUS_DB_NAME", "hermus")
-DB_PASS = os.getenv("HERMUS_DB_PASS", "")
+# DB connection. In hosted deployments (Render/Heroku/etc.) a single DATABASE_URL
+# is provided — prefer it. Otherwise fall back to the per-part HERMUS_DB_* vars
+# used by local dev and the desktop app.
+DB_SSL = False
+_raw = os.getenv("DATABASE_URL", "").strip()
 
-if DB_PASS:
-    DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+if _raw:
+    # Strip the ?sslmode=... query (pg8000 doesn't understand it) and decide SSL
+    # ourselves. Render's *internal* URL needs no SSL; the *external* one does.
+    base, _, query = _raw.partition("?")
+    if ("sslmode=require" in query) or (".render.com" in base) or (os.getenv("HERMUS_DB_SSL") == "1"):
+        DB_SSL = True
+    # Normalise the scheme to the pg8000 driver SQLAlchemy expects.
+    if base.startswith("postgres://"):
+        base = "postgresql+pg8000://" + base[len("postgres://"):]
+    elif base.startswith("postgresql://") and "+pg8000" not in base:
+        base = "postgresql+pg8000://" + base[len("postgresql://"):]
+    DATABASE_URL = base
 else:
-    DATABASE_URL = f"postgresql+pg8000://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    DB_HOST = os.getenv("HERMUS_DB_HOST", "127.0.0.1")
+    DB_PORT = os.getenv("HERMUS_DB_PORT", "5544")
+    DB_USER = os.getenv("HERMUS_DB_USER", "hermus")
+    DB_NAME = os.getenv("HERMUS_DB_NAME", "hermus")
+    DB_PASS = os.getenv("HERMUS_DB_PASS", "")
+    if DB_PASS:
+        DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    else:
+        DATABASE_URL = f"postgresql+pg8000://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 JWT_SECRET = os.getenv("HERMUS_JWT_SECRET", "hermus-dev-secret-change-me")
 JWT_ALG = "HS256"

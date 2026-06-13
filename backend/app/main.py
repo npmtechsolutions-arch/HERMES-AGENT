@@ -61,6 +61,15 @@ app.include_router(admin.router, prefix=API)
 @app.on_event("startup")
 def startup():
     Base.metadata.create_all(bind=engine)
+    # Seed demo/login data on first boot of a fresh (e.g. hosted) database so the
+    # app is usable immediately. Idempotent; set HERMUS_AUTO_SEED=0 to disable.
+    import os
+    if os.getenv("HERMUS_AUTO_SEED", "1") != "0":
+        try:
+            from .seed import seed
+            seed()
+        except Exception as e:  # never let seeding crash startup
+            print(f"[startup] seed skipped: {e}")
     hub.bind_loop()
 
 
