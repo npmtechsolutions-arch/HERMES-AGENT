@@ -3,7 +3,14 @@
 // local core service at an absolute address (exposed by the preload bridge).
 import { offlineRequest } from './offline/mock'
 
-const BASE = (typeof window !== 'undefined' && window.hermus?.apiBase) || '/api/v1'
+// API base resolution order:
+//  1. Desktop app  → the local core service address from the preload bridge.
+//  2. VITE_API_URL → a hosted backend (set at build time for web deploys, e.g.
+//     https://hermes-agent-hw8v.onrender.com/api/v1).
+//  3. /api/v1      → same-origin (local dev with the Vite proxy).
+const BASE = (typeof window !== 'undefined' && window.hermus?.apiBase)
+  || import.meta.env.VITE_API_URL
+  || '/api/v1'
 export const IS_DESKTOP = typeof window !== 'undefined' && !!window.hermus?.isElectron
 
 // Offline demo mode: once the backend is found unreachable on desktop (or forced
@@ -77,8 +84,13 @@ export const api = {
 export function openEvents(onMessage) {
   const token = getToken()
   if (!token || OFFLINE) return null
-  const wsBase = (typeof window !== 'undefined' && window.hermus?.wsBase) ||
-    `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/v1/events`
+  // Derive the WS endpoint from a hosted API URL when one is configured, else
+  // fall back to same-origin (local dev).
+  let wsBase = (typeof window !== 'undefined' && window.hermus?.wsBase) || ''
+  if (!wsBase && import.meta.env.VITE_API_URL) {
+    wsBase = import.meta.env.VITE_API_URL.replace(/^http/, 'ws').replace(/\/api\/v1\/?$/, '/ws/v1/events')
+  }
+  if (!wsBase) wsBase = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws/v1/events`
   const ws = new WebSocket(`${wsBase}?token=${token}`)
   ws.onmessage = (e) => {
     try { onMessage(JSON.parse(e.data)) } catch {}

@@ -21,7 +21,9 @@ app = FastAPI(title="HERMUS — AI Office Assistant API", version="1.0.0",
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
+    # Allow local dev (http://localhost:port) and any hosted frontend on
+    # *.onrender.com. Add a custom domain via the HERMUS_CORS env var.
+    allow_origin_regex=r"^(http://(localhost|127\.0\.0\.1):\d+|https://[a-z0-9-]+\.onrender\.com)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
