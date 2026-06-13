@@ -29,6 +29,13 @@ else:
         DATABASE_URL = f"postgresql+pg8000://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     else:
         DATABASE_URL = f"postgresql+pg8000://{DB_USER}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    # If we're clearly in a hosted environment (Render sets PORT/RENDER) but no
+    # DATABASE_URL was provided, the localhost fallback above cannot work — make
+    # that obvious in the logs instead of a cryptic 127.0.0.1 timeout.
+    if os.getenv("RENDER") or (os.getenv("PORT") and not os.getenv("HERMUS_DB_HOST")):
+        print("[config] FATAL: DATABASE_URL is not set. Add a Postgres database "
+              "and set the DATABASE_URL env var on this service. Falling back to "
+              f"{DB_HOST}:{DB_PORT}, which is not reachable here.")
 
 JWT_SECRET = os.getenv("HERMUS_JWT_SECRET", "hermus-dev-secret-change-me")
 JWT_ALG = "HS256"
