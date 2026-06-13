@@ -1,6 +1,8 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
+// HashRouter (URLs like /#/login) so deep links work on any static host
+// (Render, etc.) and in the packaged desktop app without server rewrite rules.
+import { HashRouter } from 'react-router-dom'
 import App from './App'
 import { AuthProvider } from './auth'
 import { initTheme } from './theme'
@@ -12,10 +14,10 @@ initMode()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <HashRouter>
       <AuthProvider>
         <App />
       </AuthProvider>
-    </BrowserRouter>
+    </HashRouter>
   </React.StrictMode>
 )
