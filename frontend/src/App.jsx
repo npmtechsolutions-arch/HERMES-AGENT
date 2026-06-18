@@ -39,6 +39,7 @@ import Billing from './pages/Billing'
 import Devices from './pages/Devices'
 import Settings from './pages/Settings'
 import GuidedSetup from './pages/GuidedSetup'
+import Editions from './pages/Editions'
 import Runtime from './pages/Runtime'
 import Welcome from './pages/Welcome'
 import SystemHealth from './pages/SystemHealth'
@@ -50,6 +51,7 @@ import AdminPlans from './admin/AdminPlans'
 import AdminConfig from './admin/AdminConfig'
 import AdminHermes from './admin/AdminHermes'
 import AdminCatalog from './admin/AdminCatalog'
+import AdminEditions from './admin/AdminEditions'
 import AdminReleases from './admin/AdminReleases'
 import AdminMarketplace from './admin/AdminMarketplace'
 import AdminAudit from './admin/AdminAudit'
@@ -91,6 +93,7 @@ export default function App() {
 
       <Route path="/" element={<UserRoute><Home /></UserRoute>} />
       <Route path="/guided-setup" element={<UserRoute><GuidedSetup /></UserRoute>} />
+      <Route path="/editions" element={<UserRoute><Editions /></UserRoute>} />
       <Route path="/company" element={<UserRoute><Company /></UserRoute>} />
       <Route path="/org" element={<UserRoute><OrgChart /></UserRoute>} />
       <Route path="/chatbots" element={<UserRoute><Chatbots /></UserRoute>} />
@@ -132,6 +135,7 @@ export default function App() {
       <Route path="/admin/config" element={<AdminRoute><AdminConfig /></AdminRoute>} />
       <Route path="/admin/hermes" element={<AdminRoute><AdminHermes /></AdminRoute>} />
       <Route path="/admin/catalog" element={<AdminRoute><AdminCatalog /></AdminRoute>} />
+      <Route path="/admin/editions" element={<AdminRoute><AdminEditions /></AdminRoute>} />
       <Route path="/admin/releases" element={<AdminRoute><AdminReleases /></AdminRoute>} />
       <Route path="/admin/marketplace" element={<AdminRoute><AdminMarketplace /></AdminRoute>} />
       <Route path="/admin/audit" element={<AdminRoute><AdminAudit /></AdminRoute>} />

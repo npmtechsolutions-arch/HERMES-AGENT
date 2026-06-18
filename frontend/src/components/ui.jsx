@@ -48,10 +48,11 @@ export function Empty({ children }) {
   return <div className="empty">{children}</div>
 }
 
-export function Modal({ title, onClose, children }) {
+export function Modal({ title, onClose, children, wide }) {
   return (
     <div className="modal-back" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}
+        style={wide ? { maxWidth: 640, width: '92vw', maxHeight: '90vh', overflowY: 'auto' } : undefined}>
         <div className="between mb">
           <h3 style={{ margin: 0 }}>{title}</h3>
           <button className="icon-btn" onClick={onClose} style={{ width: 32, height: 32 }}>

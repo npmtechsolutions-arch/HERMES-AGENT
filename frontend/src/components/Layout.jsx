@@ -43,6 +43,7 @@ const NAV = [
     ['/trust', 'sparkles', 'Trust'],
   ]},
   { group: 'Account', items: [
+    ['/editions', 'layers', 'Products'],
     ['/marketplace', 'bag', 'Marketplace'],
     ['/billing', 'card', 'Subscription'],
     ['/devices', 'monitor', 'Devices'],
@@ -59,6 +60,7 @@ export default function Layout({ children }) {
   const [pending, setPending] = useState(0)
   const [ticker, setTicker] = useState('')
   const [skin, setSkin] = useState(null)
+  const [edition, setEdition] = useState(null)   // active Edition → brand + nav trim (Phase 3)
 
   // The "Pipeline / Appointments" group is universal — its labels are SKINNED to the
   // tenant's installed industry template (a lead → patient inquiry → client intake).
@@ -72,14 +74,23 @@ export default function Layout({ children }) {
     ],
   } : null
   const NAV_FULL = skinnedGroup ? [skinnedGroup, ...NAV] : NAV
+  // The active Edition trims the sidebar to its enabled scope (Phase 3 skin).
+  const hidden = new Set(edition?.active ? (edition?.skin?.hidden_nav || []) : [])
+  const NAV_TRIMMED = hidden.size
+    ? NAV_FULL.map((g) => ({ ...g, items: g.items.filter((it) => !hidden.has(it[0])) })).filter((g) => g.items.length)
+    : NAV_FULL
+  const brand = (edition?.active && edition?.skin?.brand) || 'HERMUS'
 
   useEffect(() => {
     const load = () => api.get('/approvals?state=pending')
       .then((d) => setPending(d.length)).catch(() => {})
     load()
-    const loadSkin = () => api.get('/universal/skin').then(setSkin).catch(() => {})
+    const loadSkin = () => {
+      api.get('/universal/skin').then(setSkin).catch(() => {})
+      api.get('/editions/active').then(setEdition).catch(() => {})   // active Edition → brand + nav trim
+    }
     loadSkin()
-    // re-skin the nav immediately when an industry/vertical is installed
+    // re-skin the nav immediately when an industry/vertical/edition changes
     window.addEventListener('hermus:skin-changed', loadSkin)
     const ws = openEvents((msg) => {
       if (msg.topic === 'approval.requested') {
@@ -166,9 +177,9 @@ export default function Layout({ children }) {
       <aside className="sidebar" data-tour="nav">
         <div className="brand">
           <div className="logo" />
-          <h1>HERMUS</h1>
+          <h1>{brand}</h1>
         </div>
-        {NAV_FULL.map((g) => (
+        {NAV_TRIMMED.map((g) => (
           <div key={g.group}>
             <div className="nav-group-label">{g.group}</div>
             {g.items.map(([to, ico, label, badge]) => (

@@ -7,6 +7,7 @@ const NAV = [
   ['/admin', 'dashboard', 'Overview'],
   ['/admin/tenants', 'building', 'Tenants'],
   ['/admin/plans', 'card', 'Plans & Flags'],
+  ['/admin/editions', 'layers', 'Editions'],
   ['/admin/hermes', 'sparkles', 'Hermes Defaults'],
   ['/admin/catalog', 'bag', 'Catalog Control'],
   ['/admin/config', 'layers', 'Common Config'],
