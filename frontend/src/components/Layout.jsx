@@ -45,6 +45,7 @@ const NAV = [
   ]},
   { group: 'Account', items: [
     ['/editions', 'layers', 'Products'],
+    ['/pricing', 'card', 'Plans & Pricing'],
     ['/marketplace', 'bag', 'Marketplace'],
     ['/billing', 'card', 'Subscription'],
     ['/devices', 'monitor', 'Devices'],

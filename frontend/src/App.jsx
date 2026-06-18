@@ -41,6 +41,7 @@ import Settings from './pages/Settings'
 import GuidedSetup from './pages/GuidedSetup'
 import Editions from './pages/Editions'
 import Dictate from './pages/Dictate'
+import Pricing from './pages/Pricing'
 import Runtime from './pages/Runtime'
 import Welcome from './pages/Welcome'
 import SystemHealth from './pages/SystemHealth'
@@ -53,6 +54,7 @@ import AdminConfig from './admin/AdminConfig'
 import AdminHermes from './admin/AdminHermes'
 import AdminCatalog from './admin/AdminCatalog'
 import AdminEditions from './admin/AdminEditions'
+import AdminPricing from './admin/AdminPricing'
 import AdminReleases from './admin/AdminReleases'
 import AdminMarketplace from './admin/AdminMarketplace'
 import AdminAudit from './admin/AdminAudit'
@@ -96,6 +98,7 @@ export default function App() {
       <Route path="/guided-setup" element={<UserRoute><GuidedSetup /></UserRoute>} />
       <Route path="/editions" element={<UserRoute><Editions /></UserRoute>} />
       <Route path="/dictate" element={<UserRoute><Dictate /></UserRoute>} />
+      <Route path="/pricing" element={<UserRoute><Pricing /></UserRoute>} />
       <Route path="/company" element={<UserRoute><Company /></UserRoute>} />
       <Route path="/org" element={<UserRoute><OrgChart /></UserRoute>} />
       <Route path="/chatbots" element={<UserRoute><Chatbots /></UserRoute>} />
@@ -138,6 +141,7 @@ export default function App() {
       <Route path="/admin/hermes" element={<AdminRoute><AdminHermes /></AdminRoute>} />
       <Route path="/admin/catalog" element={<AdminRoute><AdminCatalog /></AdminRoute>} />
       <Route path="/admin/editions" element={<AdminRoute><AdminEditions /></AdminRoute>} />
+      <Route path="/admin/pricing" element={<AdminRoute><AdminPricing /></AdminRoute>} />
       <Route path="/admin/releases" element={<AdminRoute><AdminReleases /></AdminRoute>} />
       <Route path="/admin/marketplace" element={<AdminRoute><AdminMarketplace /></AdminRoute>} />
       <Route path="/admin/audit" element={<AdminRoute><AdminAudit /></AdminRoute>} />

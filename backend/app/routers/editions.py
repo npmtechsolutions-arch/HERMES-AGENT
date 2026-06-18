@@ -15,8 +15,8 @@ from sqlalchemy.orm import Session
 from .. import industry_templates as tpl
 from ..database import get_db
 from ..deps import Principal, audit, current_admin, current_user, require_role
-from ..models import (Agent, Edition, EditionDeployment, Pipeline, Recipe,
-                      Tenant)
+from ..models import (Agent, Edition, EditionDeployment, Pipeline, PipelineStep,
+                      Recipe, Tenant)
 from ..routers.company import ApplyIn, apply_suggestion
 from ..routers.recipes import _BYID as RECIPE_BYID
 from ..security import ulid
@@ -160,14 +160,39 @@ def active_edition(p: Principal = Depends(current_user), db: Session = Depends(g
     return _dto(e, t.active_edition_id) if e else {"active": False}
 
 
+def _teardown_editions(db: Session, tenant_id: str):
+    """Cleanly remove every previously-activated edition's roster (agents, pipelines,
+    recipes it created) using its manifest — so switching products doesn't stack."""
+    deps = db.query(EditionDeployment).filter_by(tenant_id=tenant_id).all()
+    for dep in deps:
+        m = dep.manifest or {}
+        for pid in m.get("pipelines", []):
+            db.query(PipelineStep).filter_by(pipeline_id=pid).delete(synchronize_session=False)
+            db.query(Pipeline).filter_by(id=pid).delete(synchronize_session=False)
+        db.flush()
+        for aid in m.get("agents", []):   # clear self-referential manager links first
+            db.query(Agent).filter_by(id=aid).update({"reporting_manager_id": None}, synchronize_session=False)
+        db.flush()
+        for aid in m.get("agents", []):
+            db.query(Agent).filter_by(id=aid).delete(synchronize_session=False)
+        for rid in m.get("recipes_created", []):
+            db.query(Recipe).filter_by(id=rid).delete(synchronize_session=False)
+        db.flush()
+        db.query(EditionDeployment).filter_by(id=dep.id).delete(synchronize_session=False)
+    db.flush()
+
+
 @router.post("/editions/{slug}/activate")
 def activate_edition(slug: str, p: Principal = Depends(current_user), db: Session = Depends(get_db)):
     """Activate an Edition for this tenant: set it active, skin the workspace to its
-    industry, and deploy its roster. Records a manifest for clean switching."""
+    industry, and deploy its roster. Cleanly tears down the previous edition first
+    (one product at a time) and records a manifest for the next clean switch."""
     e = db.query(Edition).filter_by(slug=slug, status="published").first()
     if not e:
         raise HTTPException(404, detail={"code": "NOT_FOUND", "message": "Edition not found or not published"})
     t = db.get(Tenant, p.tenant_id)
+
+    _teardown_editions(db, p.tenant_id)   # clean switch — no roster stacking
 
     before_agents = {a.id for a in db.query(Agent.id).filter_by(tenant_id=p.tenant_id).all()}
     before_pipes = {x.id for x in db.query(Pipeline.id).filter_by(tenant_id=p.tenant_id).all()}
