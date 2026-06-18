@@ -573,20 +573,50 @@ INDUSTRIES = {
         "tasks": [("market", "Promote on WhatsApp"), ("books", "Track expenses"), ("ops", "Manage orders")],
     },
     "Senior Citizens": {
-        "lifecycle": ["Onboard", "Daily Care", "Check-in"],
-        "kg_entities": ["Routine", "Medicine", "Appointment", "Family Contact"],
-        "rules": [("SC-R1", "Health reminder", "Never give medical advice; reminders only", True)],
-        "roles": [
-            ("assist", "Daily Assistant", "Care", "ceo"),
-            ("health", "Health Reminder", "Care", "ceo"),
-            ("family", "Family Liaison", "Care", "ceo"),
+        # Eldercare & Family — a DUAL-user product (the older adult + the family
+        # caregiver). The chat (claude_chat.txt) makes the guardrails first-class,
+        # non-negotiable requirements: this is the one segment where "build
+        # carefully" outranks "build fast". All safety rules below are LOCKED.
+        "lifecycle": ["Onboard", "Daily Care", "Check-in", "Family Update"],
+        "kg_entities": ["Routine", "Medication", "Appointment", "Family Contact", "Emergency Contact"],
+        "rules": [
+            ("SC-R1", "Asked for medical advice, a diagnosis or a dosage change",
+             "Never give medical advice or diagnoses — reminders and routing to a human only ('let's call your doctor')", True),
+            ("SC-R2", "Unusual money request or a new payee",
+             "Flag financial-exploitation risk; never help move money to a new payee without a family-approval gate", True),
+            ("SC-R3", "Conversation/companionship",
+             "Encourage real human contact ('shall I call your daughter?'); never manufacture dependency or discourage contact", True),
+            ("SC-R4", "Asked whether it is a person",
+             "Always disclose it is an AI — never deceive the user (critical with cognitive decline)", True),
+            ("SC-R5", "Sharing the senior's data/whereabouts with family",
+             "Family visibility requires the senior's consent — assistance, not surveillance imposed on them", True),
+            ("SC-R6", "Distress or emergency language detected",
+             "Trigger a real human/contact alert (crisis routing) — never reply with only a chatbot message", True),
         ],
-        "pipelines": [("Daily check-in", "Plan → remind → update family", False, [
-            ("assist", "Prepare a simple daily plan and reminders for {product}."),
-            ("health", "List medicine and appointment reminders for today."),
-            ("family", "Draft a short update for family."),
-        ])],
-        "tasks": [("health", "Medicine reminder"), ("assist", "Read the news"), ("family", "Call family")],
+        "roles": [
+            ("companion", "Daily Companion", "Senior", "ceo"),
+            ("meds", "Medication & Appointment Reminders", "Senior", "ceo"),
+            ("connect", "Read & Connect (calls, messages)", "Senior", "ceo"),
+            ("safety", "Check-in & Crisis Routing", "Safety", "ceo"),
+            ("family", "Family Briefing", "Family", "ceo"),
+        ],
+        "pipelines": [
+            ("Daily care & family update", "Companion → reminders → check-in → brief family", False, [
+                ("companion", "Greet warmly, plan a simple day, and offer gentle company (encourage real human contact)."),
+                ("meds", "Give the medication and appointment reminders for today (reminders only — never advice)."),
+                ("safety", "Run a wellbeing check-in; if any distress is detected, escalate to a human contact."),
+                ("family", "Draft a short, consented update for the family ('took meds, doctor visit Thursday')."),
+            ]),
+            ("Money-request safety gate", "Detect → flag → family approval", True, [
+                ("safety", "Flag any unusual money request or new payee."),
+                ("family", "Require the family-approval gate before anything proceeds."),
+            ]),
+        ],
+        "tasks": [
+            ("meds", "Medication reminder"), ("connect", "Call my family"),
+            ("companion", "Read me the news"), ("safety", "Daily wellbeing check-in"),
+            ("family", "Send the family a daily briefing"),
+        ],
     },
     "Personal Productivity Assistant": {
         # HERMUS Personal — the universal personal-assistant core every profession

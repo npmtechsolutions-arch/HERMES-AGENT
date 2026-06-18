@@ -56,41 +56,74 @@ ENGINES = [
 ]
 
 
-# ── seed: HERMUS Personal (the universal personal-assistant on-ramp) ──────────
+# ── seed: HERMUS Personal + the Wave-1 profession packs (Docs 19/20 + chat) ───
+# Each pack is the universal personal core, skinned and rule-locked for a solo
+# professional. All are Editions — no code fork.
+_BASE_MODULES = ["M1", "M2", "M3", "M4", "M5", "M6", "M8", "M11", "M12", "M13",
+                 "M16", "M20", "M24", "M25", "M26", "M31", "M33", "M36"]
+_PRO_HIDDEN = ["/verticals", "/solutions", "/gateway", "/reliability"]
+_CONSUMER_HIDDEN = _PRO_HIDDEN + ["/leads", "/visits", "/compliance", "/remote"]
+_ROLE_PRICE = {
+    "plans": [
+        {"name": "Free", "price_inr": 0, "price_usd": 0, "scope": "1 agent, limited tasks/mo, local only"},
+        {"name": "Personal", "price_inr": 1999, "price_usd": 29, "scope": "Full pack, 1 device, BYOK allowed"},
+        {"name": "Pro", "price_inr": 3999, "price_usd": 59, "scope": "+ call answering / automation, 2 devices"},
+    ],
+    "byok_discount_pct": 18,
+}
+
+# slug, name, template_key, layer, tagline, brand, engines, +modules, locked_rules, hidden_nav, price, default, sort
+_EDITIONS = [
+    dict(slug="personal", name="HERMUS Personal", template_key="Personal Productivity Assistant",
+         tagline="Your private AI assistant — captures, remembers, reminds and briefs you. Runs on your machine.",
+         brand="HERMUS Personal", engines=["E2", "E3", "E4", "E7", "E8"], add=[],
+         locked=["PP-R2", "PP-R3", "PP-R4"], hidden=["/leads", "/visits", "/compliance", "/remote"] + _PRO_HIDDEN,
+         price=_ROLE_PRICE, default=True, sort=10),
+    dict(slug="doctors", name="HERMUS for Doctors", template_key="Healthcare",
+         tagline="Your AI front desk + dictation + recall — answers the phone while you're with a patient. 100% on your machine.",
+         brand="HERMUS · Doctor", engines=["E1", "E2", "E3", "E7", "E8"], add=["M15"],
+         locked=["HC-R1", "HC-R2", "HC-R3", "HC-R4"], hidden=_PRO_HIDDEN, price=_ROLE_PRICE, sort=20),
+    dict(slug="ca", name="HERMUS for Accountants", template_key="Chartered Accountants & Tax Consultants",
+         tagline="Chase client documents, never miss a GST/TDS deadline, and chase fees — every figure source-cited.",
+         brand="HERMUS · CA", engines=["E1", "E2", "E4", "E5", "E6", "E8"], add=["M17", "M18"],
+         locked=[], hidden=_PRO_HIDDEN, price=_ROLE_PRICE, sort=30),
+    dict(slug="realtor", name="HERMUS for Realtors", template_key="Real Estate",
+         tagline="Answer every lead in 5 minutes, follow up forever, and book site visits — by voice.",
+         brand="HERMUS · Realtor", engines=["E1", "E2", "E3", "E4", "E7", "E8"], add=["M14"],
+         locked=["RE-03"], hidden=_PRO_HIDDEN, price=_ROLE_PRICE, sort=40),
+    dict(slug="lawyer", name="HERMUS for Lawyers", template_key="Legal Industry",
+         tagline="Dictate drafts, track hearing dates, and chase fees — a limitation-period sentinel no tier can snooze.",
+         brand="HERMUS · Legal", engines=["E2", "E3", "E4", "E6", "E8"], add=["M18"],
+         locked=[], hidden=_PRO_HIDDEN, price=_ROLE_PRICE, sort=50),
+    dict(slug="therapist", name="HERMUS for Therapists", template_key="Healthcare",
+         tagline="Booking, reminders, intake and notes — privacy-critical, kept entirely on your machine.",
+         brand="HERMUS · Therapy", engines=["E1", "E2", "E3", "E7", "E8"], add=["M15"],
+         locked=["HC-R1", "HC-R2", "HC-R3", "HC-R4"], hidden=_PRO_HIDDEN, price=_ROLE_PRICE, sort=55),
+    dict(slug="eldercare", name="HERMUS for Seniors & Family", template_key="Senior Citizens",
+         tagline="A gentle, private voice assistant for an older adult — medication & appointment reminders, daily check-ins, and peace-of-mind family briefings.",
+         brand="HERMUS · Seniors & Family", engines=["E2", "E3", "E7", "E8"], add=["M33"],
+         locked=["SC-R1", "SC-R2", "SC-R3", "SC-R4", "SC-R5", "SC-R6"], hidden=_CONSUMER_HIDDEN,
+         price={"plans": [
+             {"name": "Free", "price_inr": 0, "price_usd": 0, "scope": "Reminders + daily check-in, local only"},
+             {"name": "Senior", "price_inr": 1499, "price_usd": 19, "scope": "Full senior assistant, voice-first, 1 device"},
+             {"name": "Family", "price_inr": 2999, "price_usd": 39, "scope": "+ family dashboard, briefings & crisis routing (dual-payer)"},
+         ], "byok_discount_pct": 18}, sort=60),
+]
+
+
 def _seed_editions(db: Session):
-    if db.query(Edition).filter_by(slug="personal").first():
-        return
-    db.add(Edition(
-        id=ulid("edn"), slug="personal", name="HERMUS Personal", layer="role_app",
-        template_key="Personal Productivity Assistant",
-        tagline="Your private AI assistant — captures, remembers, reminds and briefs you. Runs on your machine.",
-        description=("The universal personal-assistant core every profession pack sits on top of. "
-                     "Capture · Memory · Reminders · Briefing first; Communication & Documents next."),
-        enabled_engines=["E2", "E3", "E4", "E7", "E8"],
-        enabled_modules=["M1", "M2", "M3", "M4", "M5", "M6", "M8", "M11", "M12",
-                         "M13", "M16", "M20", "M24", "M25", "M26", "M31", "M33", "M36"],
-        skin={
-            "brand": "HERMUS Personal", "color": "violet",
-            # Business-only screens hidden for the personal on-ramp (Phase 3 wires this).
-            "hidden_nav": ["/leads", "/visits", "/compliance", "/remote", "/gateway",
-                           "/reliability", "/verticals", "/solutions"],
-            "onboarding": "personal",
-        },
-        price_book={
-            "plans": [
-                {"name": "Free", "price_inr": 0, "price_usd": 0,
-                 "scope": "1 agent, limited tasks/mo, local only — the funnel"},
-                {"name": "Personal", "price_inr": 1999, "price_usd": 29,
-                 "scope": "Full personal assistant, 1 device, BYOK allowed"},
-                {"name": "Pro", "price_inr": 3999, "price_usd": 59,
-                 "scope": "+ automation & dictation overlay, 2 devices"},
-            ],
-            "byok_discount_pct": 18,
-            "add_ons": [{"name": "HERMUS Dictate (standalone)", "price_inr": 799, "price_usd": 12}],
-        },
-        locked_rules=["PP-R2", "PP-R3", "PP-R4"],
-        status="published", is_default=True, sort=10,
-    ))
+    for e in _EDITIONS:
+        if db.query(Edition).filter_by(slug=e["slug"]).first():
+            continue
+        db.add(Edition(
+            id=ulid("edn"), slug=e["slug"], name=e["name"], layer="role_app",
+            template_key=e["template_key"], tagline=e["tagline"],
+            description=e.get("description", e["tagline"]),
+            enabled_engines=e["engines"], enabled_modules=_BASE_MODULES + e["add"],
+            skin={"brand": e["brand"], "color": "violet", "hidden_nav": e["hidden"], "onboarding": e["slug"]},
+            price_book=e["price"], locked_rules=e["locked"],
+            status="published", is_default=e.get("default", False), sort=e["sort"],
+        ))
     db.commit()
 
 
