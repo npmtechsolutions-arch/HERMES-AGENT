@@ -589,20 +589,47 @@ INDUSTRIES = {
         "tasks": [("health", "Medicine reminder"), ("assist", "Read the news"), ("family", "Call family")],
     },
     "Personal Productivity Assistant": {
-        "lifecycle": ["Capture", "Plan", "Do", "Review"],
-        "kg_entities": ["Task", "Note", "Contact", "Event"],
-        "rules": [("PP-R1", "External send", "Confirm before sending on your behalf", False)],
-        "roles": [
-            ("planner", "Day Planner", "Personal", "ceo"),
-            ("inbox", "Inbox Assistant", "Personal", "ceo"),
-            ("notes", "Notes & Research", "Personal", "ceo"),
+        # HERMUS Personal — the universal personal-assistant core every profession
+        # pack sits on top of. Feature groups: Capture · Memory · Time/Reminders ·
+        # Communication · Documents · Knowledge · Trust · Proactive.
+        "lifecycle": ["Capture", "Organize", "Act", "Review"],
+        "kg_entities": ["Task", "Note", "Contact", "Event", "Reminder", "Document"],
+        "rules": [
+            ("PP-R1", "External send", "Confirm before sending on your behalf", False),
+            ("PP-R2", "Asked whether it is human", "Always disclose it is an AI — never pretend to be a person", True),
+            ("PP-R3", "Money movement or a new payee/contact", "Require the owner's approval before any payment or first contact", True),
+            ("PP-R4", "Any personal data", "Local-first; sensitive data never leaves the device", True),
         ],
-        "pipelines": [("Plan my day", "Triage → plan → summarize", False, [
-            ("inbox", "Summarize and categorize today's messages about {product}."),
-            ("planner", "Build a prioritized to-do list and schedule."),
-            ("notes", "Draft notes and follow-ups to remember."),
-        ])],
-        "tasks": [("planner", "Plan the week"), ("inbox", "Triage email"), ("notes", "Summarize a document")],
+        "roles": [
+            ("inbox", "Inbox Manager", "Personal", "ceo"),
+            ("planner", "Day Planner & Briefing", "Personal", "ceo"),
+            ("calendar", "Calendar & Scheduling", "Personal", "ceo"),
+            ("tasks", "Tasks & Reminders", "Personal", "ceo"),
+            ("notes", "Notes & Second Brain", "Personal", "ceo"),
+            ("research", "Research Assistant", "Personal", "ceo"),
+            ("followup", "Follow-Up Agent", "Personal", "ceo"),
+            ("dictation", "Dictation (Voice Type)", "Personal", "ceo"),
+        ],
+        "pipelines": [
+            ("Plan my day", "Triage → plan → brief", False, [
+                ("inbox", "Summarize and categorize today's messages and what needs a reply."),
+                ("calendar", "Lay out today's schedule and flag conflicts or gaps."),
+                ("planner", "Build a prioritized to-do list and a short morning briefing."),
+            ]),
+            ("Capture & file", "Capture → understand → remember", False, [
+                ("notes", "Capture the note/voice memo, clean it up and file it to the Second Brain."),
+                ("tasks", "Extract any to-dos or reminders and schedule them."),
+            ]),
+            ("Follow-up sweep", "Find stalled threads → draft nudges", False, [
+                ("followup", "Find conversations awaiting a reply and draft gentle follow-ups (confirm before send)."),
+            ]),
+        ],
+        "tasks": [
+            ("planner", "Plan my day / week"), ("inbox", "Triage my inbox"),
+            ("notes", "Summarize a document"), ("tasks", "Set a reminder"),
+            ("calendar", "Find time for a meeting"), ("followup", "Chase a pending reply"),
+            ("dictation", "Dictate a note"), ("research", "Look something up"),
+        ],
     },
     "Software company": {
         "lifecycle": ["Idea", "Spec", "Build", "QA", "Launch"],

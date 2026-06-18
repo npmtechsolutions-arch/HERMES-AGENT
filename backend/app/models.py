@@ -59,6 +59,7 @@ class Tenant(Base, TimestampMixin):
     onboarding_note = Column(Text)
     agent_config = Column(JSON, default=dict)        # Hermes agent settings (models, gen params, behavior, voice, safety)
     setup = Column(JSON, default=dict)               # guided-setup state {goal, skipped:[], dismissed:bool}
+    active_edition_id = Column(String)               # the sub-product (Edition) this tenant is running
 
 
 class TenantMember(Base, TimestampMixin):
@@ -650,6 +651,42 @@ class EngineDeployment(Base, TimestampMixin):
     eid = Column(String, index=True)                 # engine id (E1..E8)
     name = Column(String)
     manifest = Column(JSON, default=dict)            # {agent_id, recipes_created, recipes_enabled}
+
+
+class Edition(Base, TimestampMixin):
+    """A sub-product packaging of the one engine (Docs 19/20). Admin-defined and
+    publishable: a roster source + module flags + branding skin + price book.
+    'HERMUS Personal', industry editions and role apps are all rows here — no
+    code fork. Created/edited/published from the product admin dashboard."""
+    __tablename__ = "editions"
+    id = Column(String, primary_key=True)            # edn_...
+    slug = Column(String, unique=True, index=True)   # "personal", "clinic", "doctors"
+    name = Column(String, nullable=False)            # "HERMUS Personal"
+    layer = Column(String, default="role_app")       # universal | edition | role_app
+    template_key = Column(String)                    # industry_templates.py key for the roster
+    tagline = Column(String)
+    description = Column(Text)
+    enabled_engines = Column(JSON, default=list)     # subset of E1..E8
+    enabled_modules = Column(JSON, default=list)     # subset of the 35 module flags (M1..M35)
+    skin = Column(JSON, default=dict)                # {brand, color, hidden_nav:[], onboarding}
+    price_book = Column(JSON, default=dict)          # {plans:[{name, price_inr, price_usd, ...}], add_ons:[]}
+    locked_rules = Column(JSON, default=list)        # edition-level locked rule ids/specs
+    status = Column(String, default="draft", index=True)  # draft | published | retired
+    is_default = Column(Boolean, default=False)      # the default edition new tenants land on
+    version = Column(Integer, default=1)
+    sort = Column(Integer, default=100)
+
+
+class EditionDeployment(Base, TimestampMixin):
+    """Record of an Edition activated for a tenant, with a manifest of everything
+    it created so it can be cleanly switched/undeployed (same pattern as verticals)."""
+    __tablename__ = "edition_deployments"
+    id = Column(String, primary_key=True)            # eddp_...
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    edition_id = Column(String, index=True)
+    slug = Column(String, index=True)
+    name = Column(String)
+    manifest = Column(JSON, default=dict)            # {agents, pipelines, recipes_created, recipes_enabled}
 
 
 class Product(Base, TimestampMixin):
