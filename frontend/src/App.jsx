@@ -55,6 +55,7 @@ import AdminHermes from './admin/AdminHermes'
 import AdminCatalog from './admin/AdminCatalog'
 import AdminEditions from './admin/AdminEditions'
 import AdminPricing from './admin/AdminPricing'
+import AdminEntitlements from './admin/AdminEntitlements'
 import AdminReleases from './admin/AdminReleases'
 import AdminMarketplace from './admin/AdminMarketplace'
 import AdminAudit from './admin/AdminAudit'
@@ -142,6 +143,7 @@ export default function App() {
       <Route path="/admin/catalog" element={<AdminRoute><AdminCatalog /></AdminRoute>} />
       <Route path="/admin/editions" element={<AdminRoute><AdminEditions /></AdminRoute>} />
       <Route path="/admin/pricing" element={<AdminRoute><AdminPricing /></AdminRoute>} />
+      <Route path="/admin/gating" element={<AdminRoute><AdminEntitlements /></AdminRoute>} />
       <Route path="/admin/releases" element={<AdminRoute><AdminReleases /></AdminRoute>} />
       <Route path="/admin/marketplace" element={<AdminRoute><AdminMarketplace /></AdminRoute>} />
       <Route path="/admin/audit" element={<AdminRoute><AdminAudit /></AdminRoute>} />

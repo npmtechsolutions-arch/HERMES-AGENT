@@ -14,15 +14,15 @@ export default function Editions() {
   const load = () => api.get('/editions').then(setData).catch(() => flash('err', 'Could not load products.'))
   useEffect(() => { load() }, [])
 
-  const activate = async (e) => {
-    if (!window.confirm(`Activate “${e.name}”? This sets up its agents and tailors your workspace to it.`)) return
+  const activate = async (e, tier) => {
+    const t = (tier || 'personal').toLowerCase()
+    if (!window.confirm(`Activate “${e.name}”${tier ? ` on the ${tier} plan` : ''}? This sets up its agents and tailors your workspace — your left panel reflects this product and plan.`)) return
     setBusy(e.slug)
     try {
-      const r = await api.post(`/editions/${e.slug}/activate`)
+      const r = await api.post(`/editions/${e.slug}/activate?tier=${encodeURIComponent(t)}`)
       flash('ok', r.message)
       await load()
-      // re-skin the app shell immediately
-      window.dispatchEvent(new Event('hermus:skin-changed'))
+      window.dispatchEvent(new Event('hermus:skin-changed'))   // re-skin + re-gate the shell immediately
     } catch (err) { flash('err', err?.detail?.message || err?.message || 'Could not activate.') }
     finally { setBusy(null) }
   }
@@ -57,18 +57,20 @@ export default function Editions() {
             {(e.price_book?.plans || []).length > 0 && (
               <div className="flex wrap" style={{ gap: 8, marginBottom: 12 }}>
                 {e.price_book.plans.map((p) => (
-                  <div key={p.name} className="stat" style={{ padding: 8, display: 'block', minWidth: 92 }}>
+                  <button key={p.name} className="stat" disabled={busy === e.slug}
+                    onClick={() => activate(e, p.name)} title={p.scope || `Activate on ${p.name}`}
+                    style={{ padding: 8, display: 'block', minWidth: 92, textAlign: 'left', cursor: 'pointer', border: '1px solid var(--border)' }}>
                     <div className="label">{p.name}</div>
                     <div className="value" style={{ fontSize: 16 }}>{p.price_inr ? `₹${p.price_inr}` : 'Free'}</div>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
 
-            <button className={'btn ' + (e.active ? 'ghost' : '')} disabled={busy === e.slug || e.active}
-              onClick={() => activate(e)}>
-              {e.active ? 'Currently active' : busy === e.slug ? 'Activating…' : 'Activate this product'}
-            </button>
+            {e.active
+              ? <button className="btn ghost" disabled>Currently active — pick a plan above to change tier</button>
+              : <button className="btn" disabled={busy === e.slug} onClick={() => activate(e, 'personal')}>
+                  {busy === e.slug ? 'Activating…' : 'Activate this product'}</button>}
           </div>
         ))}
         {items.length === 0 && <div className="muted" style={{ fontSize: 13, padding: 10 }}>No products available yet.</div>}

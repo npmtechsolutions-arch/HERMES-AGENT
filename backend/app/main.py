@@ -72,6 +72,7 @@ def _migrate():
     from sqlalchemy import text
     stmts = [
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS active_edition_id VARCHAR",
+        "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_tier VARCHAR DEFAULT 'personal'",
     ]
     try:
         with engine.begin() as conn:

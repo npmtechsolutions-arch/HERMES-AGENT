@@ -60,6 +60,7 @@ class Tenant(Base, TimestampMixin):
     agent_config = Column(JSON, default=dict)        # Hermes agent settings (models, gen params, behavior, voice, safety)
     setup = Column(JSON, default=dict)               # guided-setup state {goal, skipped:[], dismissed:bool}
     active_edition_id = Column(String)               # the sub-product (Edition) this tenant is running
+    plan_tier = Column(String, default="personal")   # chosen plan tier within the edition (free|personal|pro|business|enterprise)
 
 
 class TenantMember(Base, TimestampMixin):

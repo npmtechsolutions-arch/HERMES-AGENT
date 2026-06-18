@@ -8,45 +8,49 @@ import { initials, ThemeToggle } from './ui'
 import VoiceOrb from './VoiceOrb'
 import Tour from './Tour'
 
+// Each item: [path, icon, label, badge?, module?]. Items with a `module` show
+// only when that module is in the tenant's effective entitlements (edition ∩ tier
+// − admin disables). Items with no module are core (always shown unless the
+// edition's skin explicitly hides them). This is the admin-controlled left panel.
 const NAV = [
   { group: 'Workspace', items: [
     ['/', 'home', 'Home'],
-    ['/dictate', 'mic', 'Voice Type'],
+    ['/dictate', 'mic', 'Voice Type', null, 'M36'],
     ['/guided-setup', 'rocket', 'Guided Setup'],
-    ['/verticals', 'sparkles', 'Vertical Agents'],
-    ['/solutions', 'bag', 'Solutions'],
+    ['/verticals', 'sparkles', 'Vertical Agents', null, 'M20'],
+    ['/solutions', 'bag', 'Solutions', null, 'M20'],
     ['/universal', 'sparkles', 'Universal Core'],
     ['/company', 'building', 'Your Company'],
-    ['/org', 'users', 'Org Chart'],
-    ['/chatbots', 'chat', 'Chatbots'],
-    ['/agent-team', 'users', 'Agent Team'],
-    ['/tasks', 'tasks', 'Tasks'],
-    ['/recipes', 'zap', 'Recipes'],
-    ['/pipelines', 'layers', 'Pipelines'],
-    ['/skills', 'sparkles', 'Skills'],
-    ['/workflows', 'workflow', 'Workflows'],
-    ['/rehearsal', 'play', 'Rehearsal'],
-    ['/approvals', 'shield', 'Approvals', 'approvals'],
+    ['/org', 'users', 'Org Chart', null, 'M3'],
+    ['/chatbots', 'chat', 'Chatbots', null, 'M14'],
+    ['/agent-team', 'users', 'Agent Team', null, 'M3'],
+    ['/tasks', 'tasks', 'Tasks', null, 'M12'],
+    ['/recipes', 'zap', 'Recipes', null, 'M11'],
+    ['/pipelines', 'layers', 'Pipelines', null, 'M11'],
+    ['/skills', 'sparkles', 'Skills', null, 'M21'],
+    ['/workflows', 'workflow', 'Workflows', null, 'M11'],
+    ['/rehearsal', 'play', 'Rehearsal', null, 'M24'],
+    ['/approvals', 'shield', 'Approvals', 'approvals', 'M4'],
   ]},
   { group: 'Intelligence', items: [
-    ['/inbox', 'inbox', 'Comms Hub'],
-    ['/brain', 'brain', 'Second Brain'],
-    ['/graph', 'graph', 'Knowledge Graph'],
-    ['/analytics', 'chart', 'Analytics'],
+    ['/inbox', 'inbox', 'Comms Hub', null, 'M13'],
+    ['/brain', 'brain', 'Second Brain', null, 'M5'],
+    ['/graph', 'graph', 'Knowledge Graph', null, 'M6'],
+    ['/analytics', 'chart', 'Analytics', null, 'M19'],
   ]},
   { group: 'Trust & Resilience', items: [
-    ['/reliability', 'check', 'Reliability'],
-    ['/backup', 'shield', 'Backup & Restore'],
-    ['/remote', 'chat', 'Remote Access'],
-    ['/gateway', 'cpu', 'Model Gateway'],
-    ['/compliance', 'shield', 'Compliance'],
-    ['/webhooks', 'link', 'Webhooks'],
+    ['/reliability', 'check', 'Reliability', null, 'M27'],
+    ['/backup', 'shield', 'Backup & Restore', null, 'M26'],
+    ['/remote', 'chat', 'Remote Access', null, 'M33'],
+    ['/gateway', 'cpu', 'Model Gateway', null, 'M32'],
+    ['/compliance', 'shield', 'Compliance', null, 'M35'],
+    ['/webhooks', 'link', 'Webhooks', null, 'M23'],
     ['/trust', 'sparkles', 'Trust'],
   ]},
   { group: 'Account', items: [
     ['/editions', 'layers', 'Products'],
     ['/pricing', 'card', 'Plans & Pricing'],
-    ['/marketplace', 'bag', 'Marketplace'],
+    ['/marketplace', 'bag', 'Marketplace', null, 'M20'],
     ['/billing', 'card', 'Subscription'],
     ['/devices', 'monitor', 'Devices'],
     ['/runtime', 'cpu', 'Runtime & Models'],
@@ -62,7 +66,7 @@ export default function Layout({ children }) {
   const [pending, setPending] = useState(0)
   const [ticker, setTicker] = useState('')
   const [skin, setSkin] = useState(null)
-  const [edition, setEdition] = useState(null)   // active Edition → brand + nav trim (Phase 3)
+  const [ent, setEnt] = useState(null)   // entitlements: effective modules + tier + skin → drives the whole left panel
 
   // The "Pipeline / Appointments" group is universal — its labels are SKINNED to the
   // tenant's installed industry template (a lead → patient inquiry → client intake).
@@ -76,18 +80,20 @@ export default function Layout({ children }) {
     ],
   } : null
   const NAV_FULL = skinnedGroup ? [skinnedGroup, ...NAV] : NAV
-  // The active Edition trims the sidebar to its enabled scope (Phase 3 skin):
-  // explicit hidden_nav + module-gated items (a feature hides if its module is off).
-  const MODULE_NAV = { '/dictate': 'M36' }  // path → required module id
-  const hidden = new Set(edition?.active ? (edition?.skin?.hidden_nav || []) : [])
-  if (edition?.active) {
-    const mods = edition.enabled_modules || []
-    for (const [path, mod] of Object.entries(MODULE_NAV)) if (!mods.includes(mod)) hidden.add(path)
+  // ENTITLEMENTS drive the left panel: an item shows only if (it has no gating
+  // module OR that module is granted) AND it isn't explicitly hidden by the
+  // edition skin. Until entitlements load, show everything (no flicker-hide).
+  const granted = ent ? new Set(ent.modules || []) : null
+  const hidden = new Set(ent?.skin?.hidden_nav || [])
+  const visible = (it) => {
+    if (granted && it[4] && !granted.has(it[4])) return false   // module not entitled
+    if (hidden.has(it[0])) return false                          // admin/edition hid it
+    return true
   }
-  const NAV_TRIMMED = hidden.size
-    ? NAV_FULL.map((g) => ({ ...g, items: g.items.filter((it) => !hidden.has(it[0])) })).filter((g) => g.items.length)
+  const NAV_TRIMMED = (granted || hidden.size)
+    ? NAV_FULL.map((g) => ({ ...g, items: g.items.filter(visible) })).filter((g) => g.items.length)
     : NAV_FULL
-  const brand = (edition?.active && edition?.skin?.brand) || 'HERMUS'
+  const brand = ent?.skin?.brand || 'HERMUS'
 
   useEffect(() => {
     const load = () => api.get('/approvals?state=pending')
@@ -95,7 +101,7 @@ export default function Layout({ children }) {
     load()
     const loadSkin = () => {
       api.get('/universal/skin').then(setSkin).catch(() => {})
-      api.get('/editions/active').then(setEdition).catch(() => {})   // active Edition → brand + nav trim
+      api.get('/me/entitlements').then(setEnt).catch(() => {})   // effective modules + tier + skin → left panel
     }
     loadSkin()
     // re-skin the nav immediately when an industry/vertical/edition changes

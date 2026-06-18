@@ -12,6 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from .. import entitlements
 from .. import industry_templates as tpl
 from ..database import get_db
 from ..deps import Principal, audit, current_admin, current_user, require_role
@@ -160,37 +161,69 @@ def active_edition(p: Principal = Depends(current_user), db: Session = Depends(g
     return _dto(e, t.active_edition_id) if e else {"active": False}
 
 
+@router.get("/me/entitlements")
+def my_entitlements(p: Principal = Depends(current_user), db: Session = Depends(get_db)):
+    """The single source of truth the user UI renders from: the granted module set
+    (edition ∩ tier − admin disables), the locked ones, tier and skin."""
+    _seed_editions(db)
+    return entitlements.effective(db.get(Tenant, p.tenant_id), db)
+
+
+class TierIn(BaseModel):
+    tier: str
+
+
+@router.post("/me/tier")
+def set_tier(body: TierIn, p: Principal = Depends(current_user), db: Session = Depends(get_db)):
+    """The plan the user chose at signup/checkout — gates which modules unlock."""
+    t = db.get(Tenant, p.tenant_id)
+    t.plan_tier = body.tier
+    audit(db, plane="cloud", actor=f"user:{p.user_id}", action="tier.set", target=body.tier, tenant_id=p.tenant_id)
+    db.commit()
+    return {"tier": body.tier, "entitlements": entitlements.effective(t, db),
+            "message": f"Plan set to {body.tier.title()}."}
+
+
 def _teardown_editions(db: Session, tenant_id: str):
     """Cleanly remove every previously-activated edition's roster (agents, pipelines,
     recipes it created) using its manifest — so switching products doesn't stack."""
     deps = db.query(EditionDeployment).filter_by(tenant_id=tenant_id).all()
+    agent_ids, pipe_ids, recipe_ids = set(), set(), set()
     for dep in deps:
         m = dep.manifest or {}
-        for pid in m.get("pipelines", []):
-            db.query(PipelineStep).filter_by(pipeline_id=pid).delete(synchronize_session=False)
-            db.query(Pipeline).filter_by(id=pid).delete(synchronize_session=False)
+        agent_ids.update(m.get("agents", []))
+        pipe_ids.update(m.get("pipelines", []))
+        recipe_ids.update(m.get("recipes_created", []))
+    for pid in pipe_ids:
+        db.query(PipelineStep).filter_by(pipeline_id=pid).delete(synchronize_session=False)
+        db.query(Pipeline).filter_by(id=pid).delete(synchronize_session=False)
+    db.flush()
+    if agent_ids:
+        # Null ANY agent (tenant-wide) that reports to one we're about to delete,
+        # then delete — avoids the reporting_manager_id FK violation.
+        db.query(Agent).filter(Agent.tenant_id == tenant_id,
+                               Agent.reporting_manager_id.in_(agent_ids)).update(
+            {"reporting_manager_id": None}, synchronize_session=False)
         db.flush()
-        for aid in m.get("agents", []):   # clear self-referential manager links first
-            db.query(Agent).filter_by(id=aid).update({"reporting_manager_id": None}, synchronize_session=False)
-        db.flush()
-        for aid in m.get("agents", []):
-            db.query(Agent).filter_by(id=aid).delete(synchronize_session=False)
-        for rid in m.get("recipes_created", []):
-            db.query(Recipe).filter_by(id=rid).delete(synchronize_session=False)
-        db.flush()
-        db.query(EditionDeployment).filter_by(id=dep.id).delete(synchronize_session=False)
+        db.query(Agent).filter(Agent.id.in_(agent_ids)).delete(synchronize_session=False)
+    for rid in recipe_ids:
+        db.query(Recipe).filter_by(id=rid).delete(synchronize_session=False)
+    db.query(EditionDeployment).filter_by(tenant_id=tenant_id).delete(synchronize_session=False)
     db.flush()
 
 
 @router.post("/editions/{slug}/activate")
-def activate_edition(slug: str, p: Principal = Depends(current_user), db: Session = Depends(get_db)):
-    """Activate an Edition for this tenant: set it active, skin the workspace to its
-    industry, and deploy its roster. Cleanly tears down the previous edition first
-    (one product at a time) and records a manifest for the next clean switch."""
+def activate_edition(slug: str, tier: str | None = None,
+                     p: Principal = Depends(current_user), db: Session = Depends(get_db)):
+    """Activate an Edition for this tenant: set it active, record the chosen plan
+    tier, skin the workspace to its industry, and deploy its roster. Cleanly tears
+    down the previous edition first (one product at a time)."""
     e = db.query(Edition).filter_by(slug=slug, status="published").first()
     if not e:
         raise HTTPException(404, detail={"code": "NOT_FOUND", "message": "Edition not found or not published"})
     t = db.get(Tenant, p.tenant_id)
+    if tier:
+        t.plan_tier = tier
 
     _teardown_editions(db, p.tenant_id)   # clean switch — no roster stacking
 
@@ -246,6 +279,36 @@ class EditionIn(BaseModel):
     locked_rules: list[str] = []
     is_default: bool = False
     sort: int = 100
+
+
+class EntitlementsIn(BaseModel):
+    config: dict
+
+
+@admin.get("/entitlements")
+def get_entitlements_cfg(p: Principal = Depends(current_admin), db: Session = Depends(get_db)):
+    """The tier-gating rules: which module GROUP unlocks at which tier + global
+    module kill-switch. This is how admin decides what users on each plan can see."""
+    require_role(p, "catalog")
+    return {"config": entitlements.config(db), "defaults": entitlements._DEFAULT,
+            "tiers": entitlements.TIER_ORDER,
+            "groups": sorted({m[2] for m in MODULES}),
+            "modules": [MODULE_BYID[m[0]] for m in MODULES]}
+
+
+@admin.patch("/entitlements")
+def set_entitlements_cfg(body: EntitlementsIn, p: Principal = Depends(current_admin), db: Session = Depends(get_db)):
+    require_role(p, "catalog")
+    from ..models import ConfigItem
+    row = db.query(ConfigItem).filter_by(domain="entitlements", key="config").first()
+    if not row:
+        row = ConfigItem(id=ulid("cfg"), domain="entitlements", key="config", value={},
+                         scope="overridable", active=True)
+        db.add(row)
+    row.value = body.config
+    audit(db, plane="cloud", actor=f"admin:{p.user_id}", action="entitlements.update")
+    db.commit()
+    return {"config": entitlements.config(db), "message": "Tier-gating rules updated for all tenants."}
 
 
 @admin.get("/editions/catalog")

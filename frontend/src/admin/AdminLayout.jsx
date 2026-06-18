@@ -8,6 +8,7 @@ const NAV = [
   ['/admin/tenants', 'building', 'Tenants'],
   ['/admin/plans', 'card', 'Plans & Flags'],
   ['/admin/editions', 'layers', 'Editions'],
+  ['/admin/gating', 'shield', 'Plan Gating'],
   ['/admin/pricing', 'card', 'Pricing'],
   ['/admin/hermes', 'sparkles', 'Hermes Defaults'],
   ['/admin/catalog', 'bag', 'Catalog Control'],
