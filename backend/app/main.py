@@ -10,7 +10,7 @@ from .config import CORS_ORIGINS
 from .database import Base, engine
 from .events import hub
 from .routers import (admin, agentsphere, ask, auth, billing, brain, chatbots,
-                      comms, company, compliance, dual, editions, leads, mvp, org,
+                      comms, company, compliance, dictate, dual, editions, leads, mvp, org,
                       pipelines, platform, recipes, remote, setup, skills, solutions,
                       tasks, universal, verticals, voice, workflows)
 from .security import decode_token
@@ -60,6 +60,7 @@ app.include_router(billing.analytics, prefix=API)
 app.include_router(admin.router, prefix=API)
 app.include_router(editions.router, prefix=API)
 app.include_router(editions.admin, prefix=API)
+app.include_router(dictate.router, prefix=API)
 
 
 def _migrate():

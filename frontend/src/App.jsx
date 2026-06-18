@@ -40,6 +40,7 @@ import Devices from './pages/Devices'
 import Settings from './pages/Settings'
 import GuidedSetup from './pages/GuidedSetup'
 import Editions from './pages/Editions'
+import Dictate from './pages/Dictate'
 import Runtime from './pages/Runtime'
 import Welcome from './pages/Welcome'
 import SystemHealth from './pages/SystemHealth'
@@ -94,6 +95,7 @@ export default function App() {
       <Route path="/" element={<UserRoute><Home /></UserRoute>} />
       <Route path="/guided-setup" element={<UserRoute><GuidedSetup /></UserRoute>} />
       <Route path="/editions" element={<UserRoute><Editions /></UserRoute>} />
+      <Route path="/dictate" element={<UserRoute><Dictate /></UserRoute>} />
       <Route path="/company" element={<UserRoute><Company /></UserRoute>} />
       <Route path="/org" element={<UserRoute><OrgChart /></UserRoute>} />
       <Route path="/chatbots" element={<UserRoute><Chatbots /></UserRoute>} />

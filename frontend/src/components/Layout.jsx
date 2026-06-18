@@ -11,6 +11,7 @@ import Tour from './Tour'
 const NAV = [
   { group: 'Workspace', items: [
     ['/', 'home', 'Home'],
+    ['/dictate', 'mic', 'Voice Type'],
     ['/guided-setup', 'rocket', 'Guided Setup'],
     ['/verticals', 'sparkles', 'Vertical Agents'],
     ['/solutions', 'bag', 'Solutions'],
@@ -74,8 +75,14 @@ export default function Layout({ children }) {
     ],
   } : null
   const NAV_FULL = skinnedGroup ? [skinnedGroup, ...NAV] : NAV
-  // The active Edition trims the sidebar to its enabled scope (Phase 3 skin).
+  // The active Edition trims the sidebar to its enabled scope (Phase 3 skin):
+  // explicit hidden_nav + module-gated items (a feature hides if its module is off).
+  const MODULE_NAV = { '/dictate': 'M36' }  // path → required module id
   const hidden = new Set(edition?.active ? (edition?.skin?.hidden_nav || []) : [])
+  if (edition?.active) {
+    const mods = edition.enabled_modules || []
+    for (const [path, mod] of Object.entries(MODULE_NAV)) if (!mods.includes(mod)) hidden.add(path)
+  }
   const NAV_TRIMMED = hidden.size
     ? NAV_FULL.map((g) => ({ ...g, items: g.items.filter((it) => !hidden.has(it[0])) })).filter((g) => g.items.length)
     : NAV_FULL
