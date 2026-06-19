@@ -475,6 +475,33 @@ class Reminder(Base, TimestampMixin):
     status = Column(String, default="active")        # active | done | canceled
 
 
+class Connection(Base, TimestampMixin):
+    """A connected external provider (Doc 23 Tier-2). LOCAL plane only — provider
+    tokens NEVER reach the cloud (ARCHITECTURE §2). Stores only a REFERENCE to the
+    token in the local Vault, never the token itself."""
+    __tablename__ = "connections"
+    id = Column(String, primary_key=True)            # con_...
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    user_id = Column(String, index=True)
+    provider = Column(String)                        # google_calendar|gmail|whatsapp|outlook...
+    status = Column(String, default="connected")     # connected|expired|revoked|error
+    vault_secret_key = Column(String)                # points to the token in the local Vault
+    scopes = Column(JSON, default=list)
+    account_label = Column(String)                   # e.g. anil@gmail.com
+    connected_at = Column(DateTime(timezone=True))
+    last_ok_at = Column(DateTime(timezone=True))
+    last_error = Column(String)
+
+
+class VaultSecret(Base, TimestampMixin):
+    """The local secrets Vault — provider tokens etc. live here on the user's
+    machine, referenced by key from `connections`. NEVER synced to the cloud."""
+    __tablename__ = "vault_secrets"
+    id = Column(String, primary_key=True)            # the vault key (vlt_...)
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    value = Column(Text)                             # token JSON (encrypted-at-rest in prod)
+
+
 class TaskArtifact(Base, TimestampMixin):
     """A file an agent produced, saved LOCALLY on the user's machine (ARCHITECTURE
     §8). Only the path is recorded — file content NEVER leaves the device."""

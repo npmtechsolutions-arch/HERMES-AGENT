@@ -25,14 +25,24 @@ from typing import Any, Callable, Optional
 from pydantic import ValidationError as PydanticValidationError, create_model
 
 # ── error kinds (ARCHITECTURE §7 / Prompt A) ─────────────────────────────────
-# transient | validation | permission | user_input_needed
+# transient | validation | permission | user_input_needed | credential
 class ToolError(Exception):
     kind = "error"
+
+    def __init__(self, *args, user_message: Optional[str] = None):
+        super().__init__(*args)
+        self.user_message = user_message
 
 
 class TransientError(ToolError):
     """A retryable failure (timeout / network / 5xx). The wrapper retries these."""
     kind = "transient"
+
+
+class CredentialError(ToolError):
+    """A provider token expired and silent refresh failed (Tier-2). The wrapper
+    surfaces ONE 'reconnect X' message and pauses dependents (ARCHITECTURE §7)."""
+    kind = "credential"
 
 
 class ToolValidationError(ToolError):
@@ -335,6 +345,9 @@ def call_tool(name: str, ctx: ToolContext, /, **kwargs) -> ToolResult:
     # 4) run with bounded transient retry
     try:
         result = run_with_retry(spec.fn, ctx, clean)
+    except CredentialError as e:
+        return ToolResult(ok=False, error="credential",
+                          summary=e.user_message or "A connection needs reconnecting.")
     except UserInputNeeded as e:
         return ToolResult(ok=False, error="user_input_needed", summary=str(e) or "Need one detail from you.")
     except TransientError as e:
