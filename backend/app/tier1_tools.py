@@ -6,10 +6,11 @@ one-sentence summary. Local only — no external network calls.
 """
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from . import llm
-from .models import MemoryItem, Reminder, Schedule, now as _now
+from . import ceo_agent, llm
+from .models import (Agent, KGEntity, MemoryItem, Reminder, RoiEntry, Schedule,
+                     Task, now as _now)
 from .security import ulid
 from .tools import ToolResult, tool
 
@@ -252,3 +253,128 @@ def form_fill(ctx, template, data, title="Form"):
     return ToolResult(ok=True, data={"title": title},
                       artifacts=[{"kind": "form", "title": title, "ext": "txt", "content": filled}],
                       summary=f"Filled “{title}” from your data.")
+
+
+# ════════════════════════════ FINDER (Doc 22 Prompt D) ══════════════════════
+@tool("memory.search", "Search the Second Brain.",
+      {"query": {"type": "string", "required": True},
+       "scopes": {"type": "array"}, "top_k": {"type": "number", "default": 5}},
+      permission="memory.read")
+def memory_search(ctx, query, scopes=None, top_k=5):
+    q = (ctx.db.query(MemoryItem).filter_by(tenant_id=ctx.actor.tenant_id)
+         .filter(MemoryItem.tier != "deleted")
+         .filter(MemoryItem.body.ilike(f"%{query}%") | MemoryItem.title.ilike(f"%{query}%")))
+    if scopes:
+        q = q.filter(MemoryItem.memory_class.in_(scopes))
+    rows = q.order_by(MemoryItem.created_at.desc()).limit(int(top_k)).all()
+    hits = [{"id": m.id, "title": m.title, "class": m.memory_class} for m in rows]
+    return ToolResult(ok=True, data={"results": hits}, summary=f"Found {len(hits)} item(s) for “{query}”.")
+
+
+@tool("memory.write", "Write a memory (memory_class: personal|business|knowledge).",
+      {"content": {"type": "string", "required": True},
+       "memory_class": {"type": "string", "default": "personal"}, "entity_links": {"type": "array"}},
+      permission="memory.write", writes_memory=True)
+def memory_write(ctx, content, memory_class="personal", entity_links=None):
+    title = (content.strip().split("\n")[0])[:60] or "Memory"
+    _mem(ctx, title, content, "note", memory_class)
+    return ToolResult(ok=True, data={"title": title}, summary=f"Remembered: “{title}”.")
+
+
+@tool("memory.forget", "Forget a memory (soft-delete, 30-day recovery).",
+      {"id": {"type": "string", "required": True}},
+      permission="memory.write", approval="required", writes_memory=True)
+def memory_forget(ctx, id):
+    m = ctx.db.get(MemoryItem, id)
+    if not m or m.tenant_id != ctx.actor.tenant_id:
+        return ToolResult(ok=False, error="validation", summary="That memory doesn't exist.")
+    m.tier = "deleted"   # MC-04 soft delete; recoverable for 30 days
+    return ToolResult(ok=True, data={"id": id}, summary=f"Forgotten “{m.title}” (recoverable for 30 days).")
+
+
+@tool("contact.upsert", "Add or update a contact.",
+      {"name": {"type": "string", "required": True}, "relationship": {"type": "string"},
+       "fields": {"type": "object"}},
+      permission="contacts.write", writes_memory=True)
+def contact_upsert(ctx, name, relationship=None, fields=None):
+    e = (ctx.db.query(KGEntity)
+         .filter_by(tenant_id=ctx.actor.tenant_id, type="contact", name=name).first())
+    attrs = dict(fields or {})
+    if relationship:
+        attrs["relationship"] = relationship
+    if e:
+        e.attrs = {**(e.attrs or {}), **attrs}
+    else:
+        e = KGEntity(id=ulid("ent"), tenant_id=ctx.actor.tenant_id, type="contact", name=name, attrs=attrs)
+        ctx.db.add(e); ctx.db.flush()
+    return ToolResult(ok=True, data={"id": e.id, "name": name}, summary=f"Saved contact: {name}.")
+
+
+@tool("contact.lookup", "Find a contact by name or mention.",
+      {"name_or_mention": {"type": "string", "required": True}}, permission="contacts.read")
+def contact_lookup(ctx, name_or_mention):
+    rows = (ctx.db.query(KGEntity).filter_by(tenant_id=ctx.actor.tenant_id, type="contact")
+            .filter(KGEntity.name.ilike(f"%{name_or_mention}%")).limit(5).all())
+    hits = [{"id": e.id, "name": e.name, "attrs": e.attrs} for e in rows]
+    return ToolResult(ok=True, data={"contacts": hits}, summary=f"Found {len(hits)} contact(s).")
+
+
+# ════════════════════════════ INBOX (drafting; send is Tier-2) ══════════════
+@tool("message.draft", "Draft a message — produces a draft only, never sends.",
+      {"to": {"type": "string", "required": True}, "intent": {"type": "string", "required": True},
+       "tone": {"type": "string", "default": "friendly"}},
+      permission="messages.draft", writes_memory=True)
+def message_draft(ctx, to, intent, tone="friendly"):
+    draft = None
+    if llm.available():
+        draft = llm.chat(f"Write a {tone} short message to {to}. Intent: {intent}.",
+                         system="Return ONLY the message body, ready for the user to review.")
+    if not draft:
+        draft = f"Hi {to},\n\n{intent}\n\nThanks."
+    _mem(ctx, f"Draft to {to}", draft, "draft")
+    return ToolResult(ok=True, data={"to": to, "draft": draft},
+                      summary=f"Drafted a message to {to} (review before sending).")
+
+
+@tool("followup.schedule", "Schedule a follow-up reminder.",
+      {"about": {"type": "string", "required": True}, "cadence": {"type": "string", "default": "in 3 days"}},
+      permission="reminders.write", writes_memory=True)
+def followup_schedule(ctx, about, cadence="in 3 days"):
+    days = next((n for n in range(1, 31) if str(n) in cadence), 3)
+    due = ctx.now + timedelta(days=days)
+    r = Reminder(id=ulid("rem"), tenant_id=ctx.actor.tenant_id, user_id=ctx.actor.user_id,
+                 text=f"Follow up: {about}", due_at=due, kind="followup", status="active")
+    ctx.db.add(r); ctx.db.flush()
+    _register_trigger(ctx, kind="event", expression="once", next_run_at=due)
+    return ToolResult(ok=True, data={"id": r.id}, summary=f"Follow-up on “{about}” set for {due:%d %b}.")
+
+
+# ════════════════════════════ ARIA (orchestration & reporting) ══════════════
+@tool("task.plan", "Decompose a goal into a plan (the CEO-Agent assigns agents).",
+      {"utterance": {"type": "string", "required": True}}, permission="orchestrate")
+def task_plan(ctx, utterance):
+    agents = [{"name": a.name, "designation": a.designation}
+              for a in ctx.db.query(Agent).filter_by(tenant_id=ctx.actor.tenant_id).all()]
+    plan = ceo_agent.plan_task(utterance, agents)
+    steps = plan.get("steps", []) if isinstance(plan, dict) else (plan or [])
+    return ToolResult(ok=True, data={"plan": plan}, summary=f"Planned “{utterance[:48]}” into {len(steps)} step(s).")
+
+
+@tool("briefing.compose", "Compose a daily/weekly briefing.",
+      {"scope": {"type": "string", "enum": ["daily", "weekly"], "default": "daily"}},
+      permission="orchestrate")
+def briefing_compose(ctx, scope="daily"):
+    open_tasks = (ctx.db.query(Task).filter_by(tenant_id=ctx.actor.tenant_id)
+                  .filter(Task.status.notin_(["done", "canceled"])).count())
+    rems = ctx.db.query(Reminder).filter_by(tenant_id=ctx.actor.tenant_id, status="active").count()
+    text = f"Your {scope} briefing: {open_tasks} task(s) in flight, {rems} active reminder(s)."
+    return ToolResult(ok=True, data={"text": text, "open_tasks": open_tasks, "reminders": rems}, summary=text)
+
+
+@tool("roi.summarize", "Summarize the value the assistant delivered.",
+      {"period": {"type": "string", "default": "week"}}, permission="orchestrate")
+def roi_summarize(ctx, period="week"):
+    rows = ctx.db.query(RoiEntry).filter_by(tenant_id=ctx.actor.tenant_id).all()
+    hours = round(sum(float(getattr(r, "value_minutes", 0) or 0) for r in rows) / 60, 1)
+    return ToolResult(ok=True, data={"hours_saved": hours, "items": len(rows)},
+                      summary=f"This {period}: {len(rows)} action(s), ~{hours} hours saved.")

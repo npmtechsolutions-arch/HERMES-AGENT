@@ -286,7 +286,16 @@ def save_artifacts(ctx: ToolContext, result: ToolResult):
 
 
 def emit_activity(ctx: ToolContext, result: ToolResult, spec: ToolSpec):
-    """Stream the one-line summary to the Activity WebSocket topic (Prompt A)."""
+    """Wire the one-line summary into the Activity feed: persist an audit record
+    (what the feed reads + powers "Why?") and push it live over WebSocket."""
+    if ctx.db is not None:
+        try:
+            from .deps import audit
+            audit(ctx.db, plane="local", actor=f"agent:{ctx.actor.agent_id or 'aria'}",
+                  action="assistant.action", target=result.summary,
+                  tenant_id=ctx.actor.tenant_id, meta={"tool": spec.name, "ok": result.ok})
+        except Exception:
+            pass
     try:
         from .events import hub
         hub.emit(ctx.actor.tenant_id, "activity",
@@ -340,6 +349,11 @@ def call_tool(name: str, ctx: ToolContext, /, **kwargs) -> ToolResult:
         if spec.writes_memory:
             write_operational_memory(ctx, spec, clean, result)
         emit_activity(ctx, result, spec)
+        if ctx.speak:                       # voice session → speak the one-line summary
+            try:
+                ctx.speak(result.summary)
+            except Exception:
+                pass
     return result
 
 
