@@ -296,7 +296,9 @@ def emit_activity(ctx: ToolContext, result: ToolResult, spec: ToolSpec):
 
 
 # ── the single execution path (Doc 22 §1.5 / ARCHITECTURE §3, §5, §7, §8) ────
-def call_tool(name: str, ctx: ToolContext, **kwargs) -> ToolResult:
+def call_tool(name: str, ctx: ToolContext, /, **kwargs) -> ToolResult:
+    # `name` + `ctx` are positional-only so a tool param literally called "name"
+    # (e.g. routine.create) doesn't collide with the wrapper's own argument.
     spec = TOOL_REGISTRY.get(name)
     if not spec:
         return ToolResult(ok=False, error="validation", summary=f"Unknown tool '{name}'.")

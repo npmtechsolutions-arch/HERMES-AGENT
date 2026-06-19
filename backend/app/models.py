@@ -461,6 +461,20 @@ class KGRelation(Base, TimestampMixin):
     attrs = Column(JSON, default=dict)
 
 
+class Reminder(Base, TimestampMixin):
+    """Local reminders / routines / tracked deadlines (Doc 22 Tier-1, Scheduler)."""
+    __tablename__ = "reminders"
+    id = Column(String, primary_key=True)            # rem_...
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    user_id = Column(String)
+    text = Column(String)
+    due_at = Column(DateTime(timezone=True))
+    repeat = Column(String, default="none")          # none | daily | weekly | monthly
+    kind = Column(String, default="reminder")        # reminder | routine | deadline | followup
+    detail = Column(String)                          # bill/renewal/license; or a routine's cadence
+    status = Column(String, default="active")        # active | done | canceled
+
+
 class TaskArtifact(Base, TimestampMixin):
     """A file an agent produced, saved LOCALLY on the user's machine (ARCHITECTURE
     §8). Only the path is recorded — file content NEVER leaves the device."""
