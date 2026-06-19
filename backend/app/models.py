@@ -461,6 +461,19 @@ class KGRelation(Base, TimestampMixin):
     attrs = Column(JSON, default=dict)
 
 
+class TaskArtifact(Base, TimestampMixin):
+    """A file an agent produced, saved LOCALLY on the user's machine (ARCHITECTURE
+    §8). Only the path is recorded — file content NEVER leaves the device."""
+    __tablename__ = "task_artifacts"
+    id = Column(String, primary_key=True)            # art_...
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    user_id = Column(String, index=True)
+    task_id = Column(String)                         # optional link to a task
+    kind = Column(String)                            # document|summary|export|...
+    title = Column(String)
+    path = Column(String)                            # ~/HERMUS/files/{user_id}/{yyyy}/{mm}/...
+
+
 # ───────────────────────────── LOCAL: Bus, Comms, Calls ─────────────────────
 class BusThread(Base, TimestampMixin):
     __tablename__ = "bus_threads"

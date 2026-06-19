@@ -15,6 +15,9 @@ once the human approves (a sync request handler cannot block on a person).
 This module is the FRAMEWORK ONLY. The actual tools (reminder.*, note.*, …) are
 Prompt C/D; the richer Operational-Memory + artifact plumbing is Prompt B.
 """
+import json
+import os
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
@@ -162,42 +165,123 @@ def run_with_retry(fn, ctx, kwargs, *, max_attempts=3, base_delay=0.05) -> ToolR
     raise last if last else TransientError("retries exhausted")
 
 
-# ── memory / artifact / activity hooks ───────────────────────────────────────
-# NOTE: Prompt B replaces write_operational_memory + save_artifacts with the full
-# plumbing (redact_pii, KG entity linking, ~/HERMUS/files paths, task_artifacts).
-# These minimal versions keep the wrapper functional and testable for Prompt A.
+# ── memory / artifact plumbing (Doc 22 Prompt B / ARCHITECTURE §8) ───────────
+def _data_root() -> str:
+    """The user's LOCAL data root (~/HERMUS by default; overridable for tests/desktop)."""
+    return os.environ.get("HERMUS_DATA_ROOT") or os.path.join(os.path.expanduser("~"), "HERMUS")
+
+
+_RE_EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+_RE_PHONE = re.compile(r"\+?\d[\d \-()]{6,}\d")
+_RE_PAN = re.compile(r"\b[A-Z]{5}\d{4}[A-Z]\b")
+_RE_LONGNUM = re.compile(r"\b\d{6,}\b")          # account / Aadhaar / id numbers
+
+
+def redact_pii(value):
+    """Strip emails / phones / id-numbers from a string or (recursively) a dict/list.
+    Used on the stored Operational-Memory input body — names stay, identifiers go."""
+    if isinstance(value, str):
+        v = _RE_EMAIL.sub("[redacted-email]", value)
+        v = _RE_PAN.sub("[redacted-id]", v)
+        v = _RE_PHONE.sub("[redacted-phone]", v)
+        v = _RE_LONGNUM.sub("[redacted-id]", v)
+        return v
+    if isinstance(value, dict):
+        return {k: redact_pii(x) for k, x in value.items()}
+    if isinstance(value, list):
+        return [redact_pii(x) for x in value]
+    return value
+
+
+def _extract_entities(spec: ToolSpec, kwargs: dict, result: ToolResult):
+    """Heuristically pull the entities an action touched — contacts, bills/renewals,
+    documents (Doc 22 Part 5). Returns deduped [(type, name)]."""
+    ents = []
+    for el in (kwargs.get("entity_links") or []):
+        if isinstance(el, dict) and el.get("name"):
+            ents.append((el.get("type", "custom"), el["name"]))
+        elif isinstance(el, str) and el.strip():
+            ents.append(("custom", el.strip()))
+    for k in ("name", "to", "payee", "contact"):
+        v = kwargs.get(k)
+        if isinstance(v, str) and v.strip() and "@" not in v:
+            ents.append(("contact", v.strip()))
+    kind, label = kwargs.get("kind"), (kwargs.get("label") or kwargs.get("text"))
+    if kind in ("bill", "renewal", "license") and isinstance(label, str) and label.strip():
+        ents.append((kind, label.strip()))
+    for art in (result.artifacts or []):
+        if isinstance(art, dict) and art.get("title"):
+            ents.append(("document", art["title"]))
+    seen, out = set(), []
+    for t, n in ents:
+        key = (t, n.lower())
+        if key not in seen:
+            seen.add(key); out.append((t, n))
+    return out
+
+
+def _upsert_entity(db, tenant_id, etype, name):
+    from .models import KGEntity
+    from .security import ulid
+    e = db.query(KGEntity).filter_by(tenant_id=tenant_id, type=etype, name=name).first()
+    if not e:
+        e = KGEntity(id=ulid("ent"), tenant_id=tenant_id, type=etype, name=name)
+        db.add(e); db.flush()
+    return e
+
+
 def write_operational_memory(ctx: ToolContext, spec: ToolSpec, kwargs: dict, result: ToolResult):
+    """On a successful tool, append exactly ONE Operational-Memory row (PII-redacted
+    input) and upsert+link the entities it touched in the Knowledge Graph (§8)."""
     if ctx.db is None:
         return
-    import json
-    from .models import MemoryItem
+    from .models import KGRelation, MemoryItem
     from .security import ulid
-    body = {"tool": spec.name, "input": {k: v for k, v in kwargs.items() if not k.startswith("_")},
-            "output": result.data, "agent": ctx.actor.agent_id, "at": ctx.now.isoformat()}
+    clean_input = redact_pii({k: v for k, v in kwargs.items() if not str(k).startswith("_")})
+    ent_ids = [_upsert_entity(ctx.db, ctx.actor.tenant_id, t, n).id
+               for t, n in _extract_entities(spec, kwargs, result)]
+    # KG relations are entity→entity: link the first touched entity to the rest.
+    for eid in ent_ids[1:]:
+        ctx.db.add(KGRelation(id=ulid("rel"), tenant_id=ctx.actor.tenant_id,
+                              from_id=ent_ids[0], to_id=eid, relation=spec.name))
+    body = {"tool": spec.name, "input": clean_input, "output": result.data,
+            "agent": ctx.actor.agent_id, "at": ctx.now.isoformat(), "entities": ent_ids}
     ctx.db.add(MemoryItem(id=ulid("mem"), tenant_id=ctx.actor.tenant_id,
                           memory_class="operational", title=result.summary,
                           source_type="agent_action", body=json.dumps(body),
                           tier="hot", confidence=1.0))
+    ctx.db.flush()
 
 
 def save_artifacts(ctx: ToolContext, result: ToolResult):
+    """Write each artifact LOCALLY to ~/HERMUS/files/{user_id}/{yyyy}/{mm}/ and record
+    a task_artifacts row with the path. Content is NEVER transmitted (§2, §8)."""
     if not result.artifacts:
         return
-    import os
+    from .models import TaskArtifact
     from .security import ulid
-    base = os.path.join(os.path.expanduser("~"), "HERMUS", "files", ctx.actor.tenant_id)
+    base = os.path.join(_data_root(), "files", ctx.actor.user_id,
+                        ctx.now.strftime("%Y"), ctx.now.strftime("%m"))
     saved = []
     for art in result.artifacts:
+        path = art.get("path")
         if art.get("content") is not None:
             try:
                 os.makedirs(base, exist_ok=True)
                 path = os.path.join(base, f"{ulid('art')}.{art.get('ext', 'md')}")
                 with open(path, "w") as f:
                     f.write(art["content"])
-                art["path"] = path
             except Exception:
-                art["path"] = "(local write failed)"
-        saved.append({k: v for k, v in art.items() if k != "content"})
+                path = "(local write failed)"
+        if path and ctx.db is not None:
+            ctx.db.add(TaskArtifact(id=ulid("art"), tenant_id=ctx.actor.tenant_id,
+                                    user_id=ctx.actor.user_id, kind=art.get("kind", "document"),
+                                    title=art.get("title"), path=path))
+        rec = {k: v for k, v in art.items() if k != "content"}
+        rec["path"] = path
+        saved.append(rec)
+    if ctx.db is not None:
+        ctx.db.flush()
     result.artifacts = saved
 
 
