@@ -108,20 +108,23 @@ class ToolSpec:
     description: str
     params: dict                # {pname: {type, required, enum, default, format}}
     permission: str
-    approval: str               # "none" | "required"
+    approval: str               # "none" | "required" | "conditional"
     writes_memory: bool
     fn: Callable
+    needs_approval: Optional[Callable] = None   # predicate(ctx, kwargs)->bool for "conditional"
 
 
 TOOL_REGISTRY: dict[str, ToolSpec] = {}
 
 
-def tool(name, description, params, permission, approval="none", writes_memory=False):
+def tool(name, description, params, permission, approval="none", writes_memory=False, needs_approval=None):
     """Register a capability. Tool bodies must NOT do permission/approval/retry/
-    memory work — `call_tool` handles all of it (ARCHITECTURE §3)."""
+    memory work — `call_tool` handles all of it (ARCHITECTURE §3). For
+    approval="conditional", pass `needs_approval(ctx, kwargs)->bool`; when it
+    returns True the call is gated like approval="required"."""
     def wrap(fn):
         TOOL_REGISTRY[name] = ToolSpec(name, description, params or {}, permission,
-                                       approval, writes_memory, fn)
+                                       approval, writes_memory, fn, needs_approval)
         return fn
     return wrap
 
@@ -328,19 +331,26 @@ def call_tool(name: str, ctx: ToolContext, /, **kwargs) -> ToolResult:
     except PermissionDenied as e:
         return ToolResult(ok=False, error="permission", summary=str(e))
 
-    # 2) approval gate — money / new-contact / destructive (ARCHITECTURE §5).
-    #    Sync adaptation: return a pending result; caller re-invokes with the
-    #    approval granted (ctx.approved=True) after the human decides.
-    if spec.approval == "required" and not (ctx.approved or kwargs.get("_approved")):
-        return ToolResult(ok=False, error="user_input_needed",
-                          summary=f"“{spec.name}” needs your approval before it runs.",
-                          data={"needs_approval": True})
-
-    # 3) validate params (Pydantic v2)
+    # 2) validate params (Pydantic v2) — before the conditional predicate sees them
     try:
         clean = _validate(spec, kwargs)
     except ToolValidationError as e:
         return ToolResult(ok=False, error="validation", summary=str(e))
+
+    # 3) approval gate — money / new-contact / destructive (ARCHITECTURE §5).
+    #    "required" always gates; "conditional" gates iff the tool's predicate says
+    #    so. Sync adaptation: return a pending result; the caller re-invokes with
+    #    approval granted (ctx.approved=True) after the human decides.
+    gate = spec.approval == "required"
+    if spec.approval == "conditional" and spec.needs_approval:
+        try:
+            gate = bool(spec.needs_approval(ctx, clean))
+        except Exception:
+            gate = True   # fail-safe: if we can't evaluate, require approval
+    if gate and not (ctx.approved or kwargs.get("_approved")):
+        return ToolResult(ok=False, error="user_input_needed",
+                          summary=f"“{spec.name}” needs your approval before it runs.",
+                          data={"needs_approval": True})
 
     # 4) run with bounded transient retry
     try:
