@@ -4,11 +4,13 @@ import { api } from '../api'
 import { useAuth } from '../auth'
 import Icon from '../components/Icon'
 import { Loading, Pill, Stat } from '../components/ui'
+import PersonalHome from './PersonalHome'
 
 export default function Home() {
   const nav = useNavigate()
   const { user } = useAuth()
   const [data, setData] = useState(null)
+  const [ent, setEnt] = useState(null)
   const [demoBusy, setDemoBusy] = useState(false)
 
   const loadData = () =>
@@ -28,9 +30,12 @@ export default function Home() {
     finally { setDemoBusy(false) }
   }
 
-  useEffect(() => { loadData() }, [])
+  useEffect(() => { loadData(); api.get('/me/entitlements').then(setEnt).catch(() => {}) }, [])
 
   if (!data) return <Loading />
+  // HERMUS Personal (and any edition shipping the simplified shell) gets the
+  // Doc-21 personal dashboard instead of the business home.
+  if (ent?.skin?.nav) return <PersonalHome data={data} user={user} brand={ent.skin.brand} />
   const { summary, tasks, approvals, urgent, agents, roi, backup, health, briefing } = data
   const busy = agents.filter((a) => a.status === 'working')
   const playBriefing = () => {

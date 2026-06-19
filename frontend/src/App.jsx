@@ -41,6 +41,7 @@ import Settings from './pages/Settings'
 import GuidedSetup from './pages/GuidedSetup'
 import Editions from './pages/Editions'
 import Dictate from './pages/Dictate'
+import Activity from './pages/Activity'
 import Pricing from './pages/Pricing'
 import Runtime from './pages/Runtime'
 import Welcome from './pages/Welcome'
@@ -99,6 +100,7 @@ export default function App() {
       <Route path="/guided-setup" element={<UserRoute><GuidedSetup /></UserRoute>} />
       <Route path="/editions" element={<UserRoute><Editions /></UserRoute>} />
       <Route path="/dictate" element={<UserRoute><Dictate /></UserRoute>} />
+      <Route path="/activity" element={<UserRoute><Activity /></UserRoute>} />
       <Route path="/pricing" element={<UserRoute><Pricing /></UserRoute>} />
       <Route path="/company" element={<UserRoute><Company /></UserRoute>} />
       <Route path="/org" element={<UserRoute><OrgChart /></UserRoute>} />

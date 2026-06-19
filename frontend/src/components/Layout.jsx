@@ -79,7 +79,11 @@ export default function Layout({ children }) {
       ['/visits', 'tasks', skin.appointments || 'Appointments'],
     ],
   } : null
-  const NAV_FULL = skinnedGroup ? [skinnedGroup, ...NAV] : NAV
+  // An edition can ship its OWN simplified shell (skin.nav) — e.g. HERMUS
+  // Personal's 7 friendly screens. Else use the full business sidebar.
+  const customNav = ent?.skin?.nav
+  const NAV_FULL = (customNav && customNav.length) ? customNav
+    : (skinnedGroup ? [skinnedGroup, ...NAV] : NAV)
   // ENTITLEMENTS drive the left panel: an item shows only if (it has no gating
   // module OR that module is granted) AND it isn't explicitly hidden by the
   // edition skin. Until entitlements load, show everything (no flicker-hide).

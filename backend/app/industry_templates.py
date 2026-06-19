@@ -630,35 +630,33 @@ INDUSTRIES = {
             ("PP-R3", "Money movement or a new payee/contact", "Require the owner's approval before any payment or first contact", True),
             ("PP-R4", "Any personal data", "Local-first; sensitive data never leaves the device", True),
         ],
+        # The default team (Doc 21 Part 6.1): Aria (CEO, auto-prepended) + these 4
+        # specialists cover the universal personal needs. Profession packs add on top.
         "roles": [
-            ("inbox", "Inbox Manager", "Personal", "ceo"),
-            ("planner", "Day Planner & Briefing", "Personal", "ceo"),
-            ("calendar", "Calendar & Scheduling", "Personal", "ceo"),
-            ("tasks", "Tasks & Reminders", "Personal", "ceo"),
-            ("notes", "Notes & Second Brain", "Personal", "ceo"),
-            ("research", "Research Assistant", "Personal", "ceo"),
-            ("followup", "Follow-Up Agent", "Personal", "ceo"),
-            ("dictation", "Dictation (Voice Type)", "Personal", "ceo"),
+            ("scheduler", "Scheduler", "Personal", "ceo"),   # calendar, reminders, routines
+            ("inbox", "Inbox", "Personal", "ceo"),           # triage, drafts, follow-ups
+            ("scribe", "Scribe", "Personal", "ceo"),         # dictation, notes, documents, summaries
+            ("finder", "Finder", "Personal", "ceo"),         # memory search & research
         ],
         "pipelines": [
             ("Plan my day", "Triage → plan → brief", False, [
                 ("inbox", "Summarize and categorize today's messages and what needs a reply."),
-                ("calendar", "Lay out today's schedule and flag conflicts or gaps."),
-                ("planner", "Build a prioritized to-do list and a short morning briefing."),
+                ("scheduler", "Lay out today's schedule and reminders; flag conflicts or gaps."),
+                ("scribe", "Write a short, spoken morning briefing of what's ahead."),
             ]),
             ("Capture & file", "Capture → understand → remember", False, [
-                ("notes", "Capture the note/voice memo, clean it up and file it to the Second Brain."),
-                ("tasks", "Extract any to-dos or reminders and schedule them."),
+                ("scribe", "Capture the note/voice memo, clean it up and file it to the Second Brain."),
+                ("scheduler", "Extract any to-dos or reminders and schedule them."),
             ]),
             ("Follow-up sweep", "Find stalled threads → draft nudges", False, [
-                ("followup", "Find conversations awaiting a reply and draft gentle follow-ups (confirm before send)."),
+                ("inbox", "Find conversations awaiting a reply and draft gentle follow-ups (confirm before send)."),
             ]),
         ],
         "tasks": [
-            ("planner", "Plan my day / week"), ("inbox", "Triage my inbox"),
-            ("notes", "Summarize a document"), ("tasks", "Set a reminder"),
-            ("calendar", "Find time for a meeting"), ("followup", "Chase a pending reply"),
-            ("dictation", "Dictate a note"), ("research", "Look something up"),
+            ("scheduler", "Plan my day / week"), ("inbox", "Triage my inbox"),
+            ("scribe", "Summarize a document"), ("scheduler", "Set a reminder"),
+            ("inbox", "Chase a pending reply"), ("scribe", "Dictate a note"),
+            ("finder", "Look something up / recall"),
         ],
     },
     "Software company": {

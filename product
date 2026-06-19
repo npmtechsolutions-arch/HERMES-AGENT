@@ -21,4 +21,35 @@ so please check the link and do the modifcations
 
 
 
+Product 
+
+Now the product idea is clear
+
+user login chooses the plan and then downloads the app and login and installs the default packages 
+
+and uses the product choosed by the user.
+
+We have to restrructure the product like, everything should be controlled by product admin and the user knows only limited things.
+
+this makes the huge difference in the product.
+
+We can show left panal options to user based upon the user selected plans.
+
+So understand the whole product and restructure it properly.
+
+Admin have all the controls and which is configurable and enable/disable too.
+
+User have limited options based upon the product he chooses, other enhanced options are there in the user desktop which should be shown and which shouldn't be shown should be decided by the admin based upon the admin decision
+
+
+
+
+
+
+
+
+
+
+
+
 

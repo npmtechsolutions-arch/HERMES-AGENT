@@ -73,13 +73,37 @@ _ROLE_PRICE = {
     "byok_discount_pct": 18,
 }
 
+# HERMUS Personal's simplified 7-screen shell (Doc 21 Part 4.2) with friendly
+# labels. Items: [path, icon, label, badge, module]. When an edition's skin has a
+# `nav`, the Layout renders THIS instead of the full business sidebar.
+_PERSONAL_NAV = [
+    {"group": "Your Assistant", "items": [
+        ["/", "home", "Home"],
+        ["/dictate", "mic", "Voice Type", None, "M36"],
+        ["/tasks", "tasks", "Tasks", None, "M12"],
+        ["/inbox", "inbox", "Messages", None, "M13"],
+        ["/brain", "brain", "Memory", None, "M5"],
+        ["/agent-team", "users", "My Agents", None, "M3"],
+        ["/activity", "scroll", "Activity"],
+        ["/settings", "settings", "Settings"],
+    ]},
+    {"group": "Account", "items": [
+        ["/editions", "layers", "Products"],
+        ["/pricing", "card", "Plans"],
+        ["/billing", "card", "Subscription"],
+        ["/devices", "monitor", "Devices"],
+        ["/runtime", "cpu", "Runtime & Models"],
+        ["/system-health", "check", "System Health"],
+    ]},
+]
+
 # slug, name, template_key, layer, tagline, brand, engines, +modules, locked_rules, hidden_nav, price, default, sort
 _EDITIONS = [
     dict(slug="personal", name="HERMUS Personal", template_key="Personal Productivity Assistant",
          tagline="Your private AI assistant — captures, remembers, reminds and briefs you. Runs on your machine.",
          brand="HERMUS Personal", engines=["E2", "E3", "E4", "E7", "E8"], add=[],
          locked=["PP-R2", "PP-R3", "PP-R4"], hidden=["/leads", "/visits", "/compliance", "/remote"] + _PRO_HIDDEN,
-         price=_ROLE_PRICE, default=True, sort=10),
+         nav=_PERSONAL_NAV, price=_ROLE_PRICE, default=True, sort=10),
     dict(slug="doctors", name="HERMUS for Doctors", template_key="Healthcare",
          tagline="Your AI front desk + dictation + recall — answers the phone while you're with a patient. 100% on your machine.",
          brand="HERMUS · Doctor", engines=["E1", "E2", "E3", "E7", "E8"], add=["M15"],
@@ -112,19 +136,29 @@ _EDITIONS = [
 ]
 
 
+def _build_skin(e):
+    skin = {"brand": e["brand"], "color": "violet", "hidden_nav": e["hidden"], "onboarding": e["slug"]}
+    if e.get("nav"):
+        skin["nav"] = e["nav"]   # custom simplified shell (e.g. Personal's 7 screens)
+    return skin
+
+
 def _seed_editions(db: Session):
     for e in _EDITIONS:
-        if db.query(Edition).filter_by(slug=e["slug"]).first():
-            continue
-        db.add(Edition(
-            id=ulid("edn"), slug=e["slug"], name=e["name"], layer="role_app",
-            template_key=e["template_key"], tagline=e["tagline"],
-            description=e.get("description", e["tagline"]),
-            enabled_engines=e["engines"], enabled_modules=_BASE_MODULES + e["add"],
-            skin={"brand": e["brand"], "color": "violet", "hidden_nav": e["hidden"], "onboarding": e["slug"]},
-            price_book=e["price"], locked_rules=e["locked"],
-            status="published", is_default=e.get("default", False), sort=e["sort"],
-        ))
+        row = db.query(Edition).filter_by(slug=e["slug"]).first()
+        if not row:
+            db.add(Edition(
+                id=ulid("edn"), slug=e["slug"], name=e["name"], layer="role_app",
+                template_key=e["template_key"], tagline=e["tagline"],
+                description=e.get("description", e["tagline"]),
+                enabled_engines=e["engines"], enabled_modules=_BASE_MODULES + e["add"],
+                skin=_build_skin(e), price_book=e["price"], locked_rules=e["locked"],
+                status="published", is_default=e.get("default", False), sort=e["sort"],
+            ))
+        elif e.get("nav") and not (row.skin or {}).get("nav"):
+            # Bring the simplified shell onto an already-seeded edition without
+            # clobbering other admin-editable skin fields.
+            row.skin = {**(row.skin or {}), "nav": e["nav"]}
     db.commit()
 
 
