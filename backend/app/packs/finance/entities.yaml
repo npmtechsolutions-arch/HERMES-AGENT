@@ -1,0 +1,12 @@
+entities:
+  - type: Account
+    fields: [name, institution, kind]
+  - type: Bill
+    fields: [biller, amount, due_at]
+  - type: Subscription
+    fields: [name, amount, cadence]
+  - type: Budget
+    fields: [category, limit, period]
+relations:
+  - {from: Bill, to: Account, relation: paid_from}
+  - {from: Subscription, to: Account, relation: charged_to}

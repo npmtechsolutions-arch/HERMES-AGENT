@@ -1,0 +1,9 @@
+rules:
+  - id: FIN-R1
+    when: any payment, transfer, or money movement
+    do: never move money autonomously — prepare a handoff for the user to confirm and pay
+    locked: true
+  - id: FIN-R2
+    when: stating any amount or figure in output
+    do: it must match a source record (tracked bill or transaction); otherwise block
+    locked: true

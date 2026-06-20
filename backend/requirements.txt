@@ -6,3 +6,4 @@ pg8000
 PyJWT
 python-multipart
 email-validator
+PyYAML

@@ -1,0 +1,8 @@
+- task: track my Netflix subscription at 649 monthly
+  expect_tool: finance.track_subscription
+- task: remind me the electricity bill 1500 is due on 2026-07-05
+  expect_tool: finance.bill_reminder
+- task: what's my budget status this month
+  expect_tool: finance.budget_status
+- task: give me a finance report
+  expect_tool: finance.report
