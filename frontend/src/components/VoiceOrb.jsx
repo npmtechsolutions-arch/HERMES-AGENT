@@ -62,11 +62,15 @@ export default function VoiceOrb() {
     if (!text.trim()) return
     setState('thinking')
     setOpen(true)
+    // "show me my team / agents" → open the Agent Map (unless that page is handling voice)
+    if (/\b(show|open|go to|take me to)\b.{0,15}\b(my )?(team|agents)\b/i.test(text) && !window.__myagentsVoice) {
+      nav('/my-agents'); speak('Here is your team.'); return
+    }
     // A page may register a voice handler (e.g. Vertical Agents, Solutions). Let it
     // handle clear deploy/undeploy phrasing for what's on screen.
     const pageVoice = window.__verticalsVoice || window.__solutionsVoice || window.__universalVoice
       || window.__companyVoice || window.__orgVoice || window.__chatbotsVoice || window.__agentteamVoice
-      || window.__tasksVoice || window.__recipesVoice || window.__pipelinesVoice || window.__skillsVoice || window.__workflowsVoice || window.__rehearsalVoice || window.__approvalsVoice || window.__inboxVoice || window.__brainVoice || window.__graphVoice || window.__analyticsVoice || window.__reliabilityVoice || window.__backupVoice || window.__remoteVoice || window.__gatewayVoice || window.__webhooksVoice || window.__complianceVoice || window.__marketplaceVoice || window.__settingsVoice || window.__setupVoice
+      || window.__tasksVoice || window.__recipesVoice || window.__pipelinesVoice || window.__skillsVoice || window.__workflowsVoice || window.__rehearsalVoice || window.__approvalsVoice || window.__inboxVoice || window.__brainVoice || window.__graphVoice || window.__analyticsVoice || window.__reliabilityVoice || window.__backupVoice || window.__remoteVoice || window.__gatewayVoice || window.__webhooksVoice || window.__complianceVoice || window.__marketplaceVoice || window.__settingsVoice || window.__setupVoice || window.__myagentsVoice || window.__agentprofileVoice
     if (pageVoice && /\b(deploy|undeploy|install|uninstall|vertical|solution|engine|roster|re-?skin|rule|industry|company|product|org|suggest|focus|adopt|hire|fire|recruit|pause|resume|employee|department|archive|chatbot|channel|telegram|whatsapp|slack|discord|teams|team|persona|escalation|handoff|inbox|routing|adversarial|ask the team|task|execute|cancel|recipe|automation|turn on|turn off|pipeline|run|build|duplicate|skill|import|sandbox|workflow|activate|deactivate|dry.?run|rehears|qualify|go live|simulat|approve|reject|approval|decline|draft|reply|triage|urgent|spam|conversation|remember|memory|forget|recall|ingest|restore|entity|connect|link|graph|relationship|export|refresh|analytics|metric|release gate|reliability|eval|golden|back ?up|recovery phrase|destination|pair|revoke|signal|gateway|tier|managed|budget|local model|webhook|integration|zapier|verify|anchor|ceiling|policy|policies|isolation|compliance|audit chain|marketplace|pack|temperature|tone|autonomy|verbosity|wake word|telemetry|setting|grounding|creativity|set up|setup|staff|guide me|next step|what.?s next)\b/i.test(text)) {
       pageVoice(text)
       speak('On it.')

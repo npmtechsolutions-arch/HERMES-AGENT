@@ -83,7 +83,7 @@ _PERSONAL_NAV = [
         ["/tasks", "tasks", "Tasks", None, "M12"],
         ["/inbox", "inbox", "Messages", None, "M13"],
         ["/brain", "brain", "Memory", None, "M5"],
-        ["/agent-team", "users", "My Agents", None, "M3"],
+        ["/my-agents", "users", "My Agents", None, "M3"],
         ["/activity", "scroll", "Activity"],
         ["/settings", "settings", "Settings"],
     ]},

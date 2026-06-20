@@ -123,8 +123,10 @@ export default function Layout({ children }) {
           ? `${msg.payload.count} approval(s) ${msg.payload.state}`
           : `Approval ${msg.payload?.state || 'decided'}`)
       }
-      if (msg.topic === 'agent.status' && msg.payload.name)
+      if (msg.topic === 'agent.status' && msg.payload.name) {
         setTicker(`${msg.payload.name} is now ${msg.payload.status}`)
+        window.dispatchEvent(new CustomEvent('hermus:agent-status', { detail: msg.payload }))
+      }
       if (msg.topic === 'task.status_changed')
         setTicker(`Task "${msg.payload.title}" → ${msg.payload.new}`)
       if (msg.topic === 'vertical.changed') {

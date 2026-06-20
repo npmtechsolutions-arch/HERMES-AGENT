@@ -26,6 +26,9 @@ import Webhooks from './pages/Webhooks'
 import Solutions from './pages/Solutions'
 import Verticals from './pages/Verticals'
 import AgentTeam from './pages/AgentTeam'
+import AgentMap from './pages/AgentMap'
+import AgentProfile from './pages/AgentProfile'
+import AgentCreate from './pages/AgentCreate'
 import OrgChart from './pages/OrgChart'
 import Tasks from './pages/Tasks'
 import Workflows from './pages/Workflows'
@@ -106,6 +109,9 @@ export default function App() {
       <Route path="/org" element={<UserRoute><OrgChart /></UserRoute>} />
       <Route path="/chatbots" element={<UserRoute><Chatbots /></UserRoute>} />
       <Route path="/agent-team" element={<UserRoute><AgentTeam /></UserRoute>} />
+      <Route path="/my-agents" element={<UserRoute><AgentMap /></UserRoute>} />
+      <Route path="/my-agents/new" element={<UserRoute><AgentCreate /></UserRoute>} />
+      <Route path="/my-agents/:id" element={<UserRoute><AgentProfile /></UserRoute>} />
       <Route path="/tasks" element={<UserRoute><Tasks /></UserRoute>} />
       <Route path="/pipelines" element={<UserRoute><Pipelines /></UserRoute>} />
       <Route path="/skills" element={<UserRoute><Skills /></UserRoute>} />

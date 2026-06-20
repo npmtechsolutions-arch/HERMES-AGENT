@@ -76,11 +76,12 @@ export default function PersonalHome({ data, user, brand }) {
       {/* YOUR AGENTS */}
       <div className="card mb">
         <div className="between"><h3 style={{ marginTop: 0 }}><Icon name="users" size={16} /> Your agents</h3>
-          <Link className="muted" style={{ fontSize: 12 }} to="/agent-team">Open My Agents →</Link></div>
+          <Link className="muted" style={{ fontSize: 12 }} to="/my-agents">Open My Agents →</Link></div>
         <div className="flex wrap" style={{ gap: 8 }}>
           {agents.slice(0, 8).map((a) => (
-            <span key={a.id} className={'pill ' + dot(a.status)} title={a.designation || ''}>
-              <span className="dot" />{a.name} · {a.status}</span>
+            <Link key={a.id} to={'/my-agents?agent=' + a.id} className={'pill ' + dot(a.status)}
+              title={a.designation || ''} style={{ textDecoration: 'none', cursor: 'pointer' }}>
+              <span className="dot" />{a.name} · {a.status}</Link>
           ))}
           {agents.length === 0 && <span className="muted" style={{ fontSize: 13 }}>Your team sets up when you activate the product.</span>}
         </div>
