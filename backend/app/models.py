@@ -366,6 +366,20 @@ class SetupState(Base, TimestampMixin):
     completed_at = Column(DateTime(timezone=True))
 
 
+class AgentDraft(Base, TimestampMixin):
+    """Pro advanced-edit lifecycle (Doc 26 Prompt M). A draft holds proposed
+    config; `base` snapshots the agent at publish so a bad edit is one-click
+    revertible. Locked safety rules are validated before a draft is accepted —
+    they can't be edited away regardless of plan."""
+    __tablename__ = "agent_drafts"
+    id = Column(String, primary_key=True)        # drf_...
+    tenant_id = Column(String, index=True)
+    agent_id = Column(String, index=True)
+    data = Column(JSON, default=dict)            # proposed {name, instructions, tools, permissions, schedule, delegation, voice_id}
+    base = Column(JSON)                           # pre-publish snapshot (for revert)
+    status = Column(String, default="draft")      # draft|rehearsed|published|reverted
+
+
 # ───────────────────────────── LOCAL: Tasks & Workflows ─────────────────────
 class Task(Base, TimestampMixin):
     __tablename__ = "tasks"

@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import CORS_ORIGINS
 from .database import Base, engine
 from .events import hub
-from .routers import (admin, agents_profile, agentsphere, ask, assistant, auth, billing, brain, chatbots,
+from .routers import (admin, agents_advanced, agents_profile, agentsphere, ask, assistant, auth, billing, brain, chatbots,
                       comms, company, compliance, connections, dictate, dual, editions, leads, mvp,
                       onboarding, org, pipelines, platform, pricing, recipes, remote, setup, skills,
                       solutions, tasks, universal, verticals, voice, workflows)
@@ -65,6 +65,7 @@ app.include_router(connections.router, prefix=API)
 app.include_router(assistant.router, prefix=API)
 app.include_router(onboarding.router, prefix=API)
 app.include_router(agents_profile.router, prefix=API)
+app.include_router(agents_advanced.router, prefix=API)
 app.include_router(pricing.router, prefix=API)
 app.include_router(pricing.admin, prefix=API)
 
