@@ -10,9 +10,9 @@ from .config import CORS_ORIGINS
 from .database import Base, engine
 from .events import hub
 from .routers import (admin, agentsphere, ask, assistant, auth, billing, brain, chatbots,
-                      comms, company, compliance, connections, dictate, dual, editions, leads, mvp, org,
-                      pipelines, platform, pricing, recipes, remote, setup, skills, solutions,
-                      tasks, universal, verticals, voice, workflows)
+                      comms, company, compliance, connections, dictate, dual, editions, leads, mvp,
+                      onboarding, org, pipelines, platform, pricing, recipes, remote, setup, skills,
+                      solutions, tasks, universal, verticals, voice, workflows)
 from .security import decode_token
 
 app = FastAPI(title="HERMUS — AI Office Assistant API", version="1.0.0",
@@ -63,6 +63,7 @@ app.include_router(editions.admin, prefix=API)
 app.include_router(dictate.router, prefix=API)
 app.include_router(connections.router, prefix=API)
 app.include_router(assistant.router, prefix=API)
+app.include_router(onboarding.router, prefix=API)
 app.include_router(pricing.router, prefix=API)
 app.include_router(pricing.admin, prefix=API)
 

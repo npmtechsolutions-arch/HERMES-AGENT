@@ -6,6 +6,7 @@ import { getMode, setMode, useMode } from '../mode'
 import Icon from './Icon'
 import { initials, ThemeToggle } from './ui'
 import VoiceOrb from './VoiceOrb'
+import FirstRunWizard from './FirstRunWizard'
 import Tour from './Tour'
 
 // Each item: [path, icon, label, badge?, module?]. Items with a `module` show
@@ -247,6 +248,7 @@ export default function Layout({ children }) {
         <div className="content">{children}</div>
       </div>
       <VoiceOrb />
+      <FirstRunWizard />
       <Tour />
     </div>
   )

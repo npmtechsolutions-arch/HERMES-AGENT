@@ -211,6 +211,9 @@ export default function Settings() {
           <Row k="Company" v={user?.tenant?.company_name} />
           <Row k="Industry" v={user?.tenant?.industry || 'Universal core'} />
           <Row k="Role" v={user?.role} />
+          <button className="btn sm ghost mt" onClick={async () => { await api.post('/onboarding/reset', {}); flash('ok', 'Setup will run again.'); location.assign('#/') }}>
+            Run setup again
+          </button>
         </div>
         <div className="card">
           <h3><Icon name="shield" size={17} /> Privacy & Security</h3>

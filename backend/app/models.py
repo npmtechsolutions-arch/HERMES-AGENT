@@ -353,6 +353,19 @@ class AgentPerformance(Base):
     utilization = Column(Float, default=0)
 
 
+class SetupState(Base, TimestampMixin):
+    """First-run guided-setup wizard state (Doc 26 Part 1). One row per user;
+    drives resume. `data` holds {name, language, role}; `skipped` lists step keys
+    the user skipped; `completed_at` is set when the wizard finishes."""
+    __tablename__ = "setup_state"
+    user_id = Column(String, primary_key=True)
+    tenant_id = Column(String, index=True)
+    step = Column(Integer, default=1)            # 1..6 (the step the user is ON)
+    data = Column(JSON, default=dict)
+    skipped = Column(JSON, default=list)
+    completed_at = Column(DateTime(timezone=True))
+
+
 # ───────────────────────────── LOCAL: Tasks & Workflows ─────────────────────
 class Task(Base, TimestampMixin):
     __tablename__ = "tasks"
