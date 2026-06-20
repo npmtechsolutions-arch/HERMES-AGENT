@@ -161,10 +161,16 @@ export default function VoiceOrb() {
   }
 
   // Let the Electron global hotkey (Cmd/Ctrl+Shift+Space) and tray trigger voice.
+  // Also expose a text entry point so the top "Search or talk" bar runs commands
+  // through the same assistant engine (routing + navigation + approvals).
   useEffect(() => {
     window.__hermusVoice = startListening
-    return () => { if (window.__hermusVoice === startListening) delete window.__hermusVoice }
-  }, [supported])
+    window.__hermusAsk = (text) => { setOpen(true); setResponse(''); setTranscript(text); handleUtterance(text) }
+    return () => {
+      if (window.__hermusVoice === startListening) delete window.__hermusVoice
+      delete window.__hermusAsk
+    }
+  })
 
   function submitText(e) {
     e.preventDefault()

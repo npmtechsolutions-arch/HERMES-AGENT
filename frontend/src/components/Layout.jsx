@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { api, IS_DESKTOP, openEvents } from '../api'
 import { useAuth } from '../auth'
@@ -220,11 +220,7 @@ export default function Layout({ children }) {
 
       <div className="main">
         <header className="topbar">
-          <div className="searchbar" data-tour="search">
-            <Icon name="search" size={16} />
-            <span>Search or talk — try “show urgent messages”</span>
-            <kbd>⌘K</kbd>
-          </div>
+          <CommandBar />
           <div className="spacer" />
           <div className="tabs" data-tour="mode" style={{ margin: 0, width: 172, padding: 3 }} title="Simple shows plain language; Advanced reveals logs, rule IDs, JSON">
             {['simple', 'advanced'].map((m) => (
@@ -253,5 +249,42 @@ export default function Layout({ children }) {
       <FirstRunWizard />
       <Tour />
     </div>
+  )
+}
+
+// The top "Search or talk" bar — a real command input. Type a request and press
+// Enter; it runs through the same assistant engine as the mic (reminders, memory,
+// navigation, approvals…). ⌘K / Ctrl+K focuses it.
+function CommandBar() {
+  const [text, setText] = useState('')
+  const ref = useRef(null)
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); ref.current?.focus() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+  const submit = (e) => {
+    e.preventDefault()
+    const t = text.trim()
+    if (!t) return
+    if (window.__hermusAsk) window.__hermusAsk(t)
+    else if (window.__hermusVoice) window.__hermusVoice()
+    setText('')
+    ref.current?.blur()
+  }
+  return (
+    <form className="searchbar" data-tour="search" onSubmit={submit} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <Icon name="search" size={16} />
+      <input ref={ref} value={text} onChange={(e) => setText(e.target.value)}
+        placeholder="Search or talk — try “show urgent messages”"
+        style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', font: 'inherit', color: 'inherit' }} />
+      {text.trim()
+        ? <button type="submit" className="btn sm" style={{ padding: '3px 10px' }}>Go</button>
+        : <button type="button" className="icon-btn" title="Speak" style={{ width: 28, height: 28 }}
+            onClick={() => window.__hermusVoice && window.__hermusVoice()}><Icon name="mic" size={15} /></button>}
+      <kbd>⌘K</kbd>
+    </form>
   )
 }
