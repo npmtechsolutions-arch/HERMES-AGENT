@@ -493,6 +493,21 @@ class Connection(Base, TimestampMixin):
     last_error = Column(String)
 
 
+class WhatsAppOutbox(Base, TimestampMixin):
+    """Outbound WhatsApp queue with exponential-backoff retry + dead-letter
+    (Doc 23 Prompt G). Local plane."""
+    __tablename__ = "whatsapp_outbox"
+    id = Column(String, primary_key=True)            # wao_...
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    to = Column(String)
+    kind = Column(String)                            # text | template
+    payload = Column(JSON, default=dict)
+    status = Column(String, default="queued")        # queued | sent | dead
+    attempts = Column(Integer, default=0)
+    next_retry_at = Column(DateTime(timezone=True))
+    last_error = Column(String)
+
+
 class VaultSecret(Base, TimestampMixin):
     """The local secrets Vault — provider tokens etc. live here on the user's
     machine, referenced by key from `connections`. NEVER synced to the cloud."""

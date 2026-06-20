@@ -6,13 +6,17 @@ destructive actions; email.send blocks on a citation mismatch. stdlib urllib onl
 """
 import base64
 import json
+import os
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta
 
 from .connections import get_provider_client
-from .models import KGEntity, MemoryItem, Reminder, now as _now
+from .events import hub
+from .models import KGEntity, MemoryItem, Reminder, WhatsAppOutbox, now as _now
 from .security import ulid
 from .tier1_tools import _RE_DATE, _parse_dt, validate_citations
 from .tools import ToolResult, TransientError, tool
@@ -250,3 +254,236 @@ def email_detect_bills(ctx, query="invoice OR bill OR due OR payment", max=20):
     ctx.db.flush()
     return ToolResult(ok=True, data={"bills": found},
                       summary=f"Found {len(found)} bill(s) with due dates — tracked them for you.")
+
+
+# ════════════════════════════ WHATSAPP (Doc 23 Prompt G) ════════════════════
+# Provider HTTP (mockable). _wa_post returns a STATUS so the tool can queue on a
+# rate-limit instead of letting the wrapper's transient-retry handle it.
+def _wa_phone_id():
+    return os.getenv("HERMUS_WA_PHONE_ID", "")
+
+
+def _wa_post(token, phone_id, payload):
+    url = f"https://graph.facebook.com/v18.0/{phone_id}/messages"
+    req = urllib.request.Request(url, data=json.dumps(payload).encode(), method="POST",
+                                 headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return "sent", json.loads(r.read().decode() or "{}")
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            return "rate_limited", None
+        if e.code >= 500:
+            raise TransientError(f"provider {e.code}")
+        raise ValueError(f"provider error {e.code}")
+    except Exception as e:
+        raise TransientError(str(e))
+
+
+def _wa_incoming(token, since):
+    return []   # real: pulled from the webhook store; mocked in tests
+
+
+def _wa_quality(token, phone_id):
+    return "GREEN"   # real: WhatsApp Business quality_rating; mocked in tests
+
+
+# 24-hour customer-service window — tracked on the contact's KG entity.
+def _find_contact(ctx, who):
+    w = (who or "").strip().lower()
+    for e in ctx.db.query(KGEntity).filter_by(tenant_id=ctx.actor.tenant_id, type="contact").all():
+        a = e.attrs or {}
+        if (e.name or "").lower() == w or str(a.get("phone", "")).lower() == w or str(a.get("email", "")).lower() == w:
+            return e
+    return None
+
+
+def _record_incoming(ctx, frm, ts):
+    e = _find_contact(ctx, frm)
+    if not e:
+        e = KGEntity(id=ulid("ent"), tenant_id=ctx.actor.tenant_id, type="contact", name=frm, attrs={})
+        ctx.db.add(e)
+    e.attrs = {**(e.attrs or {}), "last_incoming_at": ts}
+    ctx.db.flush()
+
+
+def _within_window(ctx, to) -> bool:
+    e = _find_contact(ctx, to)
+    last = _parse_dt((e.attrs or {}).get("last_incoming_at")) if e else None
+    return bool(last and (_now() - last) <= timedelta(hours=24))
+
+
+def _enqueue(ctx, to, kind, payload):
+    ctx.db.add(WhatsAppOutbox(id=ulid("wao"), tenant_id=ctx.actor.tenant_id, to=to,
+                              kind=kind, payload=payload, status="queued",
+                              attempts=0, next_retry_at=_now()))
+    ctx.db.flush()
+
+
+def _wa_send_needs_approval(ctx, kw):
+    return not is_known_contact(ctx, kw.get("to", ""))   # U6 new-contact gate
+
+
+@tool("whatsapp.send", "Send a free-form WhatsApp message (24-hour window enforced).",
+      {"to": {"type": "string", "required": True}, "body": {"type": "string", "required": True}},
+      permission="whatsapp.send", approval="conditional", writes_memory=True,
+      needs_approval=_wa_send_needs_approval)
+def whatsapp_send(ctx, to, body):
+    # 24h customer-service window: free-form only allowed inside it (ARCHITECTURE §5)
+    if not _within_window(ctx, to):
+        return ToolResult(ok=False, error="validation",
+                          summary="Outside the 24-hour window — use an approved template (whatsapp.send_template).")
+    cl = get_provider_client(ctx, "whatsapp")
+    payload = {"messaging_product": "whatsapp", "to": to, "type": "text", "text": {"body": body}}
+    status, data = _wa_post(cl.access_token, _wa_phone_id(), payload)
+    if status == "rate_limited":
+        _enqueue(ctx, to, "text", payload)
+        return ToolResult(ok=True, data={"queued": True}, summary=f"Rate-limited — queued your WhatsApp to {to}; it'll retry.")
+    return ToolResult(ok=True, data={"message_id": (data.get("messages") or [{}])[0].get("id")},
+                      summary=f"Sent your WhatsApp to {to}.")
+
+
+@tool("whatsapp.send_template", "Send a pre-approved WhatsApp template (allowed outside the 24h window).",
+      {"to": {"type": "string", "required": True}, "template_id": {"type": "string", "required": True},
+       "vars": {"type": "array"}}, permission="whatsapp.send", writes_memory=True)
+def whatsapp_send_template(ctx, to, template_id, vars=None):
+    cl = get_provider_client(ctx, "whatsapp")
+    payload = {"messaging_product": "whatsapp", "to": to, "type": "template",
+               "template": {"name": template_id, "language": {"code": "en"},
+                            "components": [{"type": "body", "parameters": [{"type": "text", "text": str(v)} for v in (vars or [])]}]}}
+    status, data = _wa_post(cl.access_token, _wa_phone_id(), payload)
+    if status == "rate_limited":
+        _enqueue(ctx, to, "template", payload)
+        return ToolResult(ok=True, data={"queued": True}, summary=f"Rate-limited — queued the template to {to}.")
+    return ToolResult(ok=True, data={"message_id": (data.get("messages") or [{}])[0].get("id")},
+                      summary=f"Sent the “{template_id}” template to {to}.")
+
+
+@tool("whatsapp.list_incoming", "List incoming WhatsApp messages (also refreshes the 24h window).",
+      {"since": {"type": "string"}}, permission="whatsapp.read")
+def whatsapp_list_incoming(ctx, since=None):
+    cl = get_provider_client(ctx, "whatsapp")
+    msgs = _wa_incoming(cl.access_token, since)
+    for m in msgs:
+        if m.get("from") and m.get("ts"):
+            _record_incoming(ctx, m["from"], m["ts"])
+    return ToolResult(ok=True, data={"messages": msgs}, summary=f"{len(msgs)} incoming WhatsApp message(s).")
+
+
+@tool("whatsapp.quality_check", "Check the number's quality rating; alerts if degraded.",
+      {}, permission="whatsapp.read")
+def whatsapp_quality_check(ctx):
+    cl = get_provider_client(ctx, "whatsapp")
+    rating = _wa_quality(cl.access_token, _wa_phone_id())
+    if rating != "GREEN":
+        try:
+            hub.emit(ctx.actor.tenant_id, "alert",
+                     {"kind": "whatsapp_quality", "rating": rating,
+                      "message": f"Your WhatsApp number quality is {rating} — ease off proactive sends."})
+        except Exception:
+            pass
+        return ToolResult(ok=True, data={"rating": rating, "alert": True},
+                          summary=f"⚠ WhatsApp number quality is {rating} — proactive sends throttled.")
+    return ToolResult(ok=True, data={"rating": rating}, summary="WhatsApp number quality is GREEN.")
+
+
+@tool("whatsapp.flush_queue", "Retry queued WhatsApp messages (backoff; dead-letter after 5 tries).",
+      {}, permission="whatsapp.send")
+def whatsapp_flush_queue(ctx):
+    sent = dead = 0
+    cl = get_provider_client(ctx, "whatsapp")
+    rows = (ctx.db.query(WhatsAppOutbox)
+            .filter_by(tenant_id=ctx.actor.tenant_id, status="queued")
+            .filter(WhatsAppOutbox.next_retry_at <= _now()).all())
+    for w in rows:
+        try:
+            status, _ = _wa_post(cl.access_token, _wa_phone_id(), w.payload)
+        except Exception as e:
+            status, w.last_error = "rate_limited", str(e)
+        if status == "sent":
+            w.status = "sent"; sent += 1
+        else:
+            w.attempts += 1
+            if w.attempts >= 5:
+                w.status = "dead"; dead += 1          # dead-letter
+            else:
+                w.next_retry_at = _now() + timedelta(seconds=2 ** w.attempts)   # exp backoff
+    ctx.db.flush()
+    return ToolResult(ok=True, data={"sent": sent, "dead": dead},
+                      summary=f"WhatsApp queue: {sent} sent, {dead} dead-lettered.")
+
+
+# ════════════════════════════ CONTACTS SYNC ═════════════════════════════════
+def _people_list(token):
+    """Google People connections (mockable)."""
+    url = ("https://people.googleapis.com/v1/people/me/connections"
+           "?personFields=names,emailAddresses,phoneNumbers&pageSize=200")
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = json.loads(r.read().decode() or "{}")
+    except Exception as e:
+        raise TransientError(str(e))
+    out = []
+    for c in data.get("connections", []):
+        out.append({"name": (c.get("names") or [{}])[0].get("displayName"),
+                    "email": (c.get("emailAddresses") or [{}])[0].get("value"),
+                    "phone": (c.get("phoneNumbers") or [{}])[0].get("value")})
+    return [c for c in out if c.get("name")]
+
+
+@tool("contacts.sync", "Sync contacts from Google → resolve mentions like 'my dentist'.",
+      {}, permission="contacts.write", writes_memory=True)
+def contacts_sync(ctx):
+    cl = get_provider_client(ctx, "gmail")
+    n = 0
+    for c in _people_list(cl.access_token):
+        e = (ctx.db.query(KGEntity)
+             .filter_by(tenant_id=ctx.actor.tenant_id, type="contact", name=c["name"]).first())
+        attrs = {k: v for k, v in (("email", c.get("email")), ("phone", c.get("phone"))) if v}
+        if e:
+            e.attrs = {**(e.attrs or {}), **attrs}
+        else:
+            ctx.db.add(KGEntity(id=ulid("ent"), tenant_id=ctx.actor.tenant_id, type="contact",
+                                name=c["name"], attrs=attrs))
+        n += 1
+    ctx.db.flush()
+    return ToolResult(ok=True, data={"synced": n}, summary=f"Synced {n} contact(s) into your Second Brain.")
+
+
+# ════════════════════════════ WEB (read-only, no auth) ══════════════════════
+def _web_fetch_http(url):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 HERMUS"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.read().decode("utf-8", "ignore")
+    except Exception as e:
+        raise TransientError(str(e))
+
+
+def _web_search(query, n):
+    html = _web_fetch_http("https://lite.duckduckgo.com/lite/?" + urllib.parse.urlencode({"q": query}))
+    out = []
+    for m in re.finditer(r'<a[^>]+class="result-link"[^>]*href="([^"]+)"[^>]*>(.*?)</a>', html, re.S):
+        out.append({"url": m.group(1), "title": re.sub("<[^>]+>", "", m.group(2)).strip(), "snippet": ""})
+        if len(out) >= n:
+            break
+    return out
+
+
+@tool("web.search", "Search the web (read-only, no account). Results for Scribe to summarize.",
+      {"query": {"type": "string", "required": True}, "n": {"type": "integer", "default": 5}},
+      permission="web.read")
+def web_search(ctx, query, n=5):
+    results = _web_search(query, int(n))
+    return ToolResult(ok=True, data={"results": results}, summary=f"Found {len(results)} web result(s) for “{query}”.")
+
+
+@tool("web.fetch", "Read a web page (read-only). Returns clean text.",
+      {"url": {"type": "string", "required": True}}, permission="web.read")
+def web_fetch(ctx, url):
+    html = _web_fetch_http(url)
+    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", html, flags=re.S | re.I)
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return ToolResult(ok=True, data={"text": text[:5000]}, summary=f"Read the page at {url}.")
