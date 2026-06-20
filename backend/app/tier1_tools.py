@@ -33,6 +33,11 @@ def _register_trigger(ctx, *, kind, expression, next_run_at):
 
 # ── source-citation guard (ARCHITECTURE §5 / rule U4) ────────────────────────
 _RE_NUM = re.compile(r"\d[\d,]*(?:\.\d+)?")   # don't capture a trailing '.' (end-of-sentence)
+# question/stop words dropped before keyword-matching the Second Brain
+_STOPWORDS = {"the", "what", "whats", "when", "where", "who", "why", "how", "did",
+              "does", "was", "are", "is", "my", "me", "you", "your", "for", "and",
+              "that", "this", "his", "her", "their", "name", "about", "any", "have",
+              "has", "with", "from", "was", "tell", "show", "find", "out", "get"}
 _RE_DATE = re.compile(r"\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b|\b\d{4}-\d{2}-\d{2}\b")
 
 
@@ -261,12 +266,28 @@ def form_fill(ctx, template, data, title="Form"):
        "scopes": {"type": "array"}, "top_k": {"type": "number", "default": 5}},
       permission="memory.read")
 def memory_search(ctx, query, scopes=None, top_k=5):
-    q = (ctx.db.query(MemoryItem).filter_by(tenant_id=ctx.actor.tenant_id)
-         .filter(MemoryItem.tier != "deleted")
-         .filter(MemoryItem.body.ilike(f"%{query}%") | MemoryItem.title.ilike(f"%{query}%")))
+    # Keyword match (not whole-string): a natural question like "what's my
+    # landlord's name?" must find "my landlord's name is Mr. Sharma". We drop
+    # stop/question words, OR-match the rest, and rank by how many tokens hit.
+    from sqlalchemy import or_
+    tokens = [w for w in re.findall(r"[a-z]{3,}", query.lower()) if w not in _STOPWORDS]
+    base = (ctx.db.query(MemoryItem).filter_by(tenant_id=ctx.actor.tenant_id)
+            .filter(MemoryItem.tier != "deleted"))
     if scopes:
-        q = q.filter(MemoryItem.memory_class.in_(scopes))
-    rows = q.order_by(MemoryItem.created_at.desc()).limit(int(top_k)).all()
+        base = base.filter(MemoryItem.memory_class.in_(scopes))
+    if tokens:
+        conds = []
+        for w in tokens:
+            conds += [MemoryItem.body.ilike(f"%{w}%"), MemoryItem.title.ilike(f"%{w}%")]
+        base = base.filter(or_(*conds))
+    else:
+        base = base.filter(MemoryItem.body.ilike(f"%{query}%") | MemoryItem.title.ilike(f"%{query}%"))
+    rows = base.order_by(MemoryItem.created_at.desc()).limit(50).all()
+
+    def _score(m):
+        hay = f"{m.title} {m.body}".lower()
+        return sum(1 for w in tokens if w in hay)
+    rows = sorted(rows, key=_score, reverse=True)[:int(top_k)]
     hits = [{"id": m.id, "title": m.title, "class": m.memory_class} for m in rows]
     return ToolResult(ok=True, data={"results": hits}, summary=f"Found {len(hits)} item(s) for “{query}”.")
 
