@@ -17,6 +17,7 @@ export default function VoiceOrb() {
   const [response, setResponse] = useState('')
   const [textInput, setTextInput] = useState('')
   const recogRef = useRef(null)
+  const pendingRef = useRef(null)   // an utterance awaiting "approve" (money / new contact)
   const supported = typeof window !== 'undefined' &&
     (window.SpeechRecognition || window.webkitSpeechRecognition)
 
@@ -71,6 +72,37 @@ export default function VoiceOrb() {
       speak('On it.')
       return
     }
+    // If the last command needed approval (money / new contact) and the user now
+    // says yes, re-run it approved — the human is the final actor (§5).
+    if (pendingRef.current && /\b(approve|yes|confirm|go ahead|do it|send it|okay|ok)\b/i.test(text)) {
+      const pending = pendingRef.current; pendingRef.current = null
+      try {
+        const res = await api.post('/assistant', { text: pending, approved: true })
+        speak(res.summary || 'Done.')
+        window.dispatchEvent(new Event('hermus-activity'))
+      } catch { speak("That didn't go through.") ; setState('error') }
+      return
+    }
+    // The assistant spine: turn a natural command into a real tool action
+    // (reminders, memory, bills, writing, research, booking…). Handled fully
+    // on-device. We only fall through to dashboard Q&A / navigation when the
+    // assistant has nothing concrete to do.
+    try {
+      const res = await api.post('/assistant', { text })
+      const weak = res?.tool === 'memory.search' &&
+        (!res?.data?.results || res.data.results.length === 0)
+      if (res && res.tool && !weak) {
+        if (res.needs_approval) {
+          pendingRef.current = text
+          setState('confirming')
+          speak(`${res.summary} ${res.note || ''} Say “approve” to go ahead.`.trim())
+        } else {
+          speak(res.note ? `${res.summary} (${res.note})` : (res.summary || 'Done.'))
+          window.dispatchEvent(new Event('hermus-activity'))
+        }
+        return
+      }
+    } catch {}
     // Data questions → chat-based dashboard. Otherwise → intent routing (navigate/act).
     if (QUESTION.test(text.trim()) || METRIC.test(text)) {
       try {
@@ -159,7 +191,7 @@ export default function VoiceOrb() {
           )}
           <form onSubmit={submitText} className="flex mt">
             <input value={textInput} onChange={(e) => setTextInput(e.target.value)}
-              placeholder='e.g. "show my tasks" or "hire an employee"' />
+              placeholder='e.g. "remind me to call the bank tomorrow at 11"' />
             <button className="btn sm" type="submit">Send</button>
           </form>
           {!supported && <div className="muted mt" style={{ fontSize: 11 }}>

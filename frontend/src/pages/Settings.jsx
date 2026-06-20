@@ -199,6 +199,8 @@ export default function Settings() {
         </div>}
       </div>
 
+      <ConnectionsCard flash={flash} speak={speak} />
+
       <DisplayCard />
 
       <div className="grid cols-2">
@@ -222,6 +224,80 @@ export default function Settings() {
         </div>
       </div>
     </>
+  )
+}
+
+const PROVIDER_META = {
+  google_calendar: { label: 'Google Calendar', icon: 'clock' },
+  gmail: { label: 'Gmail', icon: 'inbox' },
+  outlook: { label: 'Outlook', icon: 'inbox' },
+  whatsapp: { label: 'WhatsApp', icon: 'chat' },
+}
+
+function ConnectionsCard({ flash, speak }) {
+  const [data, setData] = useState(null)
+  const [offline, setOffline] = useState(false)
+  const load = () => {
+    api.get('/connections').then(setData).catch(() => setData({ providers: [], connections: [] }))
+    api.get('/assistant/offline').then((r) => setOffline(!!r.offline)).catch(() => {})
+  }
+  useEffect(() => { load() }, [])
+  const byProvider = Object.fromEntries((data?.connections || []).map((c) => [c.provider, c]))
+
+  async function connect(p) {
+    try {
+      const r = await api.post(`/connections/${p}/connect`, {})
+      flash('ok', r.message); speak && speak(r.message)
+      if (r.auth_url) window.open(r.auth_url, '_blank', 'noopener')
+      setTimeout(load, 1500)
+    } catch (e) { flash('err', e?.message || 'Could not start sign-in (desktop-only).') }
+  }
+  async function disconnect(p) {
+    try { const r = await api.post(`/connections/${p}/disconnect`, {}); flash('ok', r.message); load() }
+    catch (e) { flash('err', e?.message || 'Could not disconnect.') }
+  }
+  async function toggleOffline() {
+    try { const r = await api.post('/assistant/offline', { on: !offline }); setOffline(r.offline); flash('ok', r.summary); speak && speak(r.summary) }
+    catch (e) { flash('err', e?.message || 'Could not change offline mode.') }
+  }
+
+  const providers = data?.providers?.length ? data.providers : Object.keys(PROVIDER_META)
+  return (
+    <div className="card mb" style={{ borderTop: '3px solid var(--primary)' }}>
+      <div className="between">
+        <h3 style={{ margin: 0 }}><Icon name="link" size={17} /> Connections</h3>
+        <button className={`btn sm ${offline ? '' : 'ghost'}`} onClick={toggleOffline}
+          title="When on, nothing leaves this computer">
+          {offline ? '🔒 Fully offline' : 'Go fully offline'}
+        </button>
+      </div>
+      <div className="muted mb" style={{ fontSize: 12, marginTop: 4 }}>
+        Connect your accounts so HERMUS can read mail, book real events and message — tokens stay on your computer.
+      </div>
+      <div className="grid cols-2" style={{ gap: 10 }}>
+        {providers.map((p) => {
+          const meta = PROVIDER_META[p] || { label: p, icon: 'link' }
+          const conn = byProvider[p]
+          const connected = conn && conn.status === 'connected'
+          return (
+            <div key={p} className="flex between" style={{ alignItems: 'center', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 12px' }}>
+              <div className="flex" style={{ gap: 8, alignItems: 'center' }}>
+                <Icon name={meta.icon} size={17} />
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13.5 }}>{meta.label}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>
+                    {connected ? `Connected${conn.account_label ? ` · ${conn.account_label}` : ''}` : (conn?.status === 'needs_reconnect' ? 'Needs reconnect' : 'Not connected')}
+                  </div>
+                </div>
+              </div>
+              {connected
+                ? <button className="btn sm ghost" onClick={() => disconnect(p)}>Disconnect</button>
+                : <button className="btn sm" onClick={() => connect(p)}>Connect</button>}
+            </div>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
