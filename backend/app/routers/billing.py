@@ -484,3 +484,49 @@ def analytics_resolve(body: AnalyticsVoiceIn, p: Principal = Depends(current_use
                 "message": "Checking the numbers."}
     return {"action": "none",
             "message": 'Ask e.g. "how many tasks did we complete?", or say "export the report".'}
+
+
+# ── Cost & Performance dashboard (Doc 25 §2.6/§5.3) ──────────────────────────
+def cost_recommendations(rows):
+    """Spot cheap tasks repeatedly run on a cloud (paid) tier → route local to save."""
+    from collections import defaultdict
+    agg = defaultdict(lambda: {"count": 0, "cost": 0.0})
+    for r in rows:
+        if (r.tier or "local") != "local" and float(r.cost or 0) > 0:
+            a = agg[r.task_profile or "default"]
+            a["count"] += 1
+            a["cost"] += float(r.cost or 0)
+    return [f"{v['count']} “{prof}” tasks used a cloud model (~₹{round(v['cost'], 2)}); "
+            f"routing them to your local model would save that."
+            for prof, v in agg.items() if v["count"] >= 5]
+
+
+@analytics.get("/analytics/cost")
+def cost_dashboard(p: Principal = Depends(current_user), db: Session = Depends(get_db)):
+    from collections import defaultdict
+
+    from ..models import GatewayCall, now as _n
+    rows = db.query(GatewayCall).filter_by(tenant_id=p.tenant_id).all()
+    by_model = defaultdict(lambda: {"calls": 0, "cost": 0.0, "prompt_tokens": 0, "output_tokens": 0, "tier": "local"})
+    by_day = defaultdict(lambda: {"calls": 0, "cost": 0.0})
+    total = 0.0
+    for r in rows:
+        c = float(r.cost or 0)
+        total += c
+        m = by_model[r.model or "?"]
+        m["calls"] += 1
+        m["cost"] = round(m["cost"] + c, 4)
+        m["prompt_tokens"] += r.prompt_tokens or 0
+        m["output_tokens"] += r.output_tokens or 0
+        m["tier"] = r.tier or "local"
+        day = (r.at or _n()).strftime("%Y-%m-%d")
+        by_day[day]["calls"] += 1
+        by_day[day]["cost"] = round(by_day[day]["cost"] + c, 4)
+    days = max(1, len(by_day))
+    return {
+        "total": round(total, 2), "currency": "INR", "calls": len(rows),
+        "by_model": [{"model": k, **v} for k, v in by_model.items()],
+        "by_day": [{"day": d, **v} for d, v in sorted(by_day.items())],
+        "projected_month": round(total / days * 30, 2),
+        "recommendations": cost_recommendations(rows),
+    }
