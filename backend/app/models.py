@@ -493,6 +493,33 @@ class Connection(Base, TimestampMixin):
     last_error = Column(String)
 
 
+class Handoff(Base, TimestampMixin):
+    """A prepare-and-handoff action proposal (Doc 23 Tier-3). The assistant does
+    95% and the USER is always the final actor on the external commitment — money
+    is never moved autonomously (ARCHITECTURE §5.4)."""
+    __tablename__ = "handoffs"
+    id = Column(String, primary_key=True)            # hof_...
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    user_id = Column(String, index=True)
+    action_type = Column(String)                     # restaurant_booking|cab|shopping|booking|bill_payment|message
+    payload = Column(JSON, default=dict)
+    method = Column(String)                          # link | message | call
+    status = Column(String, default="prepared")      # prepared | confirmed | done | dismissed
+    result = Column(JSON, default=dict)
+
+
+class BrowserRecipe(Base, TimestampMixin):
+    """A recorded browser-automation recipe (Doc 23 Tier-3 Strategy B). Created via
+    Skill Builder (Pro). Default OFF / opt-in per recipe (ARCHITECTURE §5)."""
+    __tablename__ = "browser_recipes"
+    id = Column(String, primary_key=True)            # brc_...
+    tenant_id = Column(String, ForeignKey("tenants.id"), index=True)
+    user_id = Column(String, index=True)
+    name = Column(String)
+    steps = Column(JSON, default=list)
+    enabled = Column(Boolean, default=False)
+
+
 class WhatsAppOutbox(Base, TimestampMixin):
     """Outbound WhatsApp queue with exponential-backoff retry + dead-letter
     (Doc 23 Prompt G). Local plane."""
