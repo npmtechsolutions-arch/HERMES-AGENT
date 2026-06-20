@@ -79,12 +79,15 @@ _ROLE_PRICE = {
 _PERSONAL_NAV = [
     {"group": "Your Assistant", "items": [
         ["/", "home", "Home"],
+        ["/capabilities", "sparkles", "What I can do"],
         ["/dictate", "mic", "Voice Type", None, "M36"],
         ["/tasks", "tasks", "Tasks", None, "M12"],
         ["/inbox", "inbox", "Messages", None, "M13"],
         ["/brain", "brain", "Memory", None, "M5"],
         ["/my-agents", "users", "My Agents", None, "M3"],
+        ["/work-summary", "chart", "Work Summary"],
         ["/activity", "scroll", "Activity"],
+        ["/my-activity", "check", "My Activity"],
         ["/settings", "settings", "Settings"],
     ]},
     {"group": "Account", "items": [

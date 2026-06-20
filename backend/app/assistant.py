@@ -249,30 +249,84 @@ def run_assistant(db, *, tenant_id, user_id, text, approved=False, speak=None, c
     actor = Actor(tenant_id=tenant_id, user_id=user_id, agent_id="Aria", grants={"*"})
     ctx = ToolContext(actor=actor, db=db, approved=approved, speak=speak,
                       request_clarification=clarify)
+
+    def _log_user(tool, ok):
+        # Doc 27 Part 6 — capture what the USER did (distinct from agent activity)
+        try:
+            from .deps import audit
+            audit(db, plane="local", actor=f"user:{user_id}", action="user.command",
+                  target=text, tenant_id=tenant_id, meta={"tool": tool, "ok": ok})
+        except Exception:
+            pass
+
     routed = route_intent(text, ctx.now)
 
     if routed is None:
         # not a command — treat as a recall question against the Second Brain
         r = call_tool("memory.search", ctx, query=text)
+        _log_user("memory.search", r.ok)
         return _result_dto("memory.search", r)
 
     name, kwargs, note = routed
     if name == "__help__":
+        _log_user("help", True)
         return {"ok": True, "tool": "help", "summary": HELP_TEXT, "data": {}, "artifacts": [],
                 "error": None, "needs_approval": False, "note": None}
     if name == "__undo__":
         out = _undo_last(ctx)
+        _log_user("undo", out["ok"])
         return {"ok": out["ok"], "tool": "undo", "summary": out["summary"], "data": {}, "artifacts": [],
                 "error": None, "needs_approval": False, "note": None}
 
     r = call_tool(name, ctx, **kwargs)
+    _log_user(name, r.ok)
     return _result_dto(name, r, note)
 
 
+# Doc 27 Part 2.1 — capabilities as tappable example commands grouped by area.
+# Users learn what to SAY, not a feature count. Each example runs through the same
+# /assistant spine when tapped.
+CAPABILITY_GROUPS = [
+    {"key": "reminders", "label": "Reminders & your day", "icon": "clock",
+     "blurb": "Never forget a thing.", "agent": "Scheduler",
+     "examples": ["Remind me to call the bank tomorrow at 11am.",
+                  "Remind me to take my medicine every morning at 8.",
+                  "What's on my plate today?", "Plan my day."]},
+    {"key": "memory", "label": "Remembering things", "icon": "brain",
+     "blurb": "Your private memory.", "agent": "Finder",
+     "examples": ["Remember my landlord's name is Mr. Sharma.",
+                  "Remember I prefer aisle seats on flights.",
+                  "What's my landlord's name?", "When is my car service due?"]},
+    {"key": "email", "label": "Messages & email", "icon": "inbox",
+     "blurb": "Triage and reply, with your approval.", "agent": "Inbox",
+     "examples": ["Read my urgent emails.", "Reply to Ravi and say I'll send the report Friday.",
+                  "Did anyone message me about the invoice?"]},
+    {"key": "calendar", "label": "Calendar & appointments", "icon": "clock",
+     "blurb": "Book and check your time.", "agent": "Scheduler",
+     "examples": ["Am I free Thursday morning?", "Book a meeting with Priya next Tuesday afternoon."]},
+    {"key": "documents", "label": "Writing & documents", "icon": "scroll",
+     "blurb": "Draft, summarize, polish.", "agent": "Scribe",
+     "examples": ["Write a thank-you note to my client.", "Summarize this PDF.",
+                  "Make me an invoice for ₹15,000 for consulting."]},
+    {"key": "money", "label": "Bills, money & renewals", "icon": "card",
+     "blurb": "Track spend — you always pay, never me.", "agent": "Scheduler",
+     "examples": ["Track my electricity bill every month.", "What subscriptions am I paying for?",
+                  "Where did my money go this month?"]},
+    {"key": "research", "label": "Research & questions", "icon": "search",
+     "blurb": "Look things up and summarize.", "agent": "Finder",
+     "examples": ["Research the best laptops under ₹60,000 and summarize.",
+                  "Compare two health insurance plans for me."]},
+    {"key": "booking", "label": "Booking things", "icon": "check",
+     "blurb": "Prepared for your one-tap confirm.", "agent": "Aria",
+     "examples": ["Book a table for 4 at Spice Garden Friday 8pm."]},
+]
+
+
 def capabilities():
-    """Grouped tool catalog for a discovery UI."""
-    groups = {}
-    for d in registry_dto():
-        domain = d["name"].split(".")[0]
-        groups.setdefault(domain, []).append(d)
-    return {"help": HELP_TEXT, "domains": groups, "count": len(TOOL_REGISTRY)}
+    """Grouped, tappable capability catalog for the discovery UI (Doc 27 Part 2.1)."""
+    return {"help": HELP_TEXT, "product_line": PRODUCT_LINE,
+            "groups": CAPABILITY_GROUPS, "count": len(TOOL_REGISTRY)}
+
+
+PRODUCT_LINE = ("HERMUS Personal — your private AI assistant that remembers, "
+                "handles your admin, and works while you don't.")

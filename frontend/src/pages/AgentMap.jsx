@@ -15,6 +15,14 @@ const STATUS = {
   escalated: { label: 'Needs you', cls: 'red' }, completed: { label: 'Done', cls: 'green' },
 }
 const ICON = { Aria: 'sparkles', Scheduler: 'clock', Inbox: 'inbox', Scribe: 'scroll', Finder: 'brain' }
+// Doc 27 Part 4.2 — feature→agent mapping shown on each card.
+const HANDLES = {
+  Aria: ['Assigns & coordinates', 'Briefings', 'Booking hand-offs'],
+  Scheduler: ['Reminders', 'Calendar', 'Routines', 'Bills'],
+  Inbox: ['Email', 'Messages', 'Follow-ups'],
+  Scribe: ['Documents', 'Summaries', 'Notes'],
+  Finder: ['Memory', 'Research', 'Contacts'],
+}
 
 export default function AgentMap() {
   const nav = useNavigate()
@@ -144,6 +152,12 @@ function AgentCard({ a, chief, onClick, doing, focused }) {
       </div>
       <div style={{ fontWeight: 700, fontSize: 14 }}>{a.name}</div>
       <div className="muted" style={{ fontSize: 11, lineHeight: 1.4 }}>{chief ? 'Chief of Staff' : (a.designation || roleOf(a.name))}</div>
+      {HANDLES[a.name] && (
+        <div style={{ marginTop: 4 }}>
+          <div className="muted" style={{ fontSize: 9.5, textTransform: 'uppercase', letterSpacing: .5 }}>Handles</div>
+          <div style={{ fontSize: 10.5, lineHeight: 1.5 }}>{HANDLES[a.name].map((h) => `• ${h}`).join(' ')}</div>
+        </div>
+      )}
       {doing && <div style={{ fontSize: 11, color: 'var(--primary)', marginTop: 2 }}>{doing}</div>}
     </button>
   )

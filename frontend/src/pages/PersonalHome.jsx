@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import Icon from '../components/Icon'
+import WhatICanDo from '../components/WhatICanDo'
 
 // Doc 21 Part 13 — the HERMUS Personal home dashboard. "How is everything going?"
 // at a glance: Needs you · In progress · Done today · Your agents · This week (ROI).
@@ -29,7 +30,7 @@ export default function PersonalHome({ data, user, brand }) {
         <div>
           <h2 style={{ margin: 0 }}>{greet}{user?.full_name ? `, ${user.full_name.split(' ')[0]}` : ''} 👋</h2>
           <p className="muted" style={{ margin: '4px 0 0', fontSize: 13 }}>
-            {brand || 'HERMUS Personal'} — here's what's happening.</p>
+            {brand || 'HERMUS Personal'} — your private AI assistant that remembers, handles your admin, and works while you don't.</p>
         </div>
         {briefing?.text && <button className="btn" onClick={() => {
           try { const u = new SpeechSynthesisUtterance(briefing.text); u.lang = 'en-IN'; speechSynthesis.cancel(); speechSynthesis.speak(u) } catch {}
@@ -52,6 +53,14 @@ export default function PersonalHome({ data, user, brand }) {
             <Link className="btn sm ghost" to="/tasks">Open</Link>
           </div>
         ))}
+      </div>
+
+      {/* WHAT I CAN DO — discovery (Doc 27 Part 2.1) */}
+      <div className="card mb">
+        <div className="between"><h3 style={{ marginTop: 0 }}><Icon name="sparkles" size={16} /> What I can do</h3>
+          <Link className="muted" style={{ fontSize: 12 }} to="/capabilities">See all I can do →</Link></div>
+        <div className="muted" style={{ fontSize: 12, marginTop: -4, marginBottom: 8 }}>Tap an example to run it — just talk naturally.</div>
+        <WhatICanDo compact />
       </div>
 
       {/* IN PROGRESS · DONE TODAY */}
@@ -94,7 +103,7 @@ export default function PersonalHome({ data, user, brand }) {
             <div style={{ fontSize: 12, opacity: .9, textTransform: 'uppercase', letterSpacing: 1 }}>This week</div>
             <div style={{ fontSize: 20, fontWeight: 700 }}>{doneCount} tasks done · ~{hours} hours saved</div>
           </div>
-          <Link className="btn secondary" to="/analytics">Details</Link>
+          <Link className="btn secondary" to="/work-summary">Open Work Summary →</Link>
         </div>
         {data?.roi?.weekly_note && <p style={{ color: 'rgba(255,255,255,.92)', fontSize: 13, margin: '8px 0 0' }}>{data.roi.weekly_note}</p>}
       </div>

@@ -135,7 +135,8 @@ def test_undo_cancels_last_reminder():
 
 def test_capabilities_and_registry_populated():
     caps = A.capabilities()
-    assert caps["count"] >= 40 and "finance" in caps["domains"] and "reminder" in caps["domains"]
+    keys = {g["key"] for g in caps["groups"]}
+    assert caps["count"] >= 40 and {"reminders", "money"} <= keys
 
 
 if __name__ == "__main__":

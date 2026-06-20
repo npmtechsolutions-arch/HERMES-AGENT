@@ -1,0 +1,91 @@
+"""
+Tests for the Doc 27 dashboard layer: capabilities discovery, Work Summary,
+Agent Activity (success/failure), and My Activity (user's own actions). Each runs
+real commands through the assistant and asserts the views reflect them.
+
+Run:  python -m pytest tests/test_journey.py -q
+Or:   python tests/test_journey.py
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from app import assistant as A  # noqa: E402
+from app.routers import journey as J  # noqa: E402
+
+
+class _P:
+    kind = "user"; user_id = "usr_j"; tenant_id = "tnt_j"; roles = []; email = "j@x.com"
+
+
+def _mkdb():
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from app.models import Base
+    eng = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(eng)
+    return sessionmaker(bind=eng)()
+
+
+def _seed(db):
+    for t in ["Remind me to call the bank tomorrow at 11am.",
+              "Remind me to pay rent on friday.",
+              "Remember my landlord's name is Mr. Sharma.",
+              "Make me an invoice for ₹15,000 for consulting."]:
+        A.run_assistant(db, tenant_id="tnt_j", user_id="usr_j", text=t)
+    db.commit()
+
+
+# ── capabilities discovery (Part 2.1) ─────────────────────────────────────────
+def test_capabilities_groups_with_tappable_examples():
+    caps = A.capabilities()
+    assert caps["product_line"].startswith("HERMUS Personal")
+    keys = {g["key"] for g in caps["groups"]}
+    assert {"reminders", "money", "documents", "research"} <= keys
+    reminders = next(g for g in caps["groups"] if g["key"] == "reminders")
+    assert any("call the bank" in e for e in reminders["examples"])
+
+
+# ── work summary (Part 8) ─────────────────────────────────────────────────────
+def test_work_summary_counts_value_and_trends():
+    db = _mkdb(); _seed(db)
+    s = J.work_summary("week", _P(), db)
+    assert s["total_actions"] >= 4
+    assert s["by_agent"].get("Scheduler", 0) >= 2 and "Scribe" in s["by_agent"]
+    assert s["value"]["hours_saved"] > 0 and s["value"]["money_value_inr"] > 0
+    assert s["trends"]["most_active_agent"] and "handled" in s["headline"]
+
+
+# ── agent activity success/failure (Part 4.4) ─────────────────────────────────
+def test_agent_activity_marks_success():
+    db = _mkdb(); _seed(db)
+    out = J.agent_activity(None, None, 60, _P(), db)
+    assert out["activity"] and all(a["marker"] in ("success", "failed") for a in out["activity"])
+    assert any(a["agent"] == "Scheduler" for a in out["activity"])
+    # filter by agent works
+    only = J.agent_activity("Scribe", None, 60, _P(), db)
+    assert all(a["agent"] == "Scribe" for a in only["activity"])
+
+
+# ── my activity (Part 6) ──────────────────────────────────────────────────────
+def test_my_activity_captures_user_commands():
+    db = _mkdb(); _seed(db)
+    out = J.my_activity(80, _P(), db)
+    asks = [a for a in out["activity"] if a["kind"] == "Asked"]
+    assert len(asks) >= 4
+    assert any("call the bank" in (a["detail"] or "") for a in asks)
+
+
+if __name__ == "__main__":
+    fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
+    passed = 0
+    for fn in fns:
+        try:
+            fn(); print(f"  PASS  {fn.__name__}"); passed += 1
+        except AssertionError as e:
+            print(f"  FAIL  {fn.__name__}: {e}")
+        except Exception as e:
+            import traceback; traceback.print_exc(); print(f"  ERROR {fn.__name__}: {e}")
+    print(f"\n{passed}/{len(fns)} passed")
+    sys.exit(0 if passed == len(fns) else 1)
