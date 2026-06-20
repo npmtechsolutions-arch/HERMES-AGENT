@@ -32,6 +32,8 @@ import AgentCreate from './pages/AgentCreate'
 import Capabilities from './pages/Capabilities'
 import WorkSummary from './pages/WorkSummary'
 import MyActivity from './pages/MyActivity'
+import AgentActivity from './pages/AgentActivity'
+import AgentActionSummary from './pages/AgentActionSummary'
 import OrgChart from './pages/OrgChart'
 import Tasks from './pages/Tasks'
 import Workflows from './pages/Workflows'
@@ -118,6 +120,8 @@ export default function App() {
       <Route path="/capabilities" element={<UserRoute><Capabilities /></UserRoute>} />
       <Route path="/work-summary" element={<UserRoute><WorkSummary /></UserRoute>} />
       <Route path="/my-activity" element={<UserRoute><MyActivity /></UserRoute>} />
+      <Route path="/agent-activity" element={<UserRoute><AgentActivity /></UserRoute>} />
+      <Route path="/agent-summary" element={<UserRoute><AgentActionSummary /></UserRoute>} />
       <Route path="/tasks" element={<UserRoute><Tasks /></UserRoute>} />
       <Route path="/pipelines" element={<UserRoute><Pipelines /></UserRoute>} />
       <Route path="/skills" element={<UserRoute><Skills /></UserRoute>} />

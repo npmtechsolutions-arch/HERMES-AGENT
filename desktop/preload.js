@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('hermus', {
   runtimePaths: () => ipcRenderer.invoke('runtime-paths'),
   backendStatus: () => ipcRenderer.invoke('backend-status'),
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  typeText: (text) => ipcRenderer.invoke('dictate-insert', text),
   markOnboarded: () => ipcRenderer.invoke('mark-onboarded'),
   notify: (title, body) => ipcRenderer.invoke('notify', { title, body }),
 

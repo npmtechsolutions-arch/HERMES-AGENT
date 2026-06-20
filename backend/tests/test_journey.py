@@ -68,6 +68,23 @@ def test_agent_activity_marks_success():
     assert all(a["agent"] == "Scribe" for a in only["activity"])
 
 
+# ── agent action summary (Part 4) ─────────────────────────────────────────────
+def test_agents_overview_full_picture():
+    from app.models import Agent
+    from app.security import ulid
+    db = _mkdb()
+    db.add(Agent(id=ulid("agt"), tenant_id="tnt_j", name="Scheduler", designation="Scheduler", status="idle"))
+    db.add(Agent(id=ulid("agt"), tenant_id="tnt_j", name="Aria", designation="Chief of Staff", is_ceo=True, status="working"))
+    db.commit()
+    _seed(db)
+    out = J.agents_overview(_P(), db)
+    assert out["agents"][0]["is_ceo"] is True               # Aria first
+    sched = next(a for a in out["agents"] if a["name"] == "Scheduler")
+    assert sched["this_week"]["actions"] >= 2 and "phrase" in sched["this_week"]
+    assert sched["scheduled_count"] >= 2                      # active reminders counted
+    assert out["totals"]["agents"] == 2
+
+
 # ── my activity (Part 6) ──────────────────────────────────────────────────────
 def test_my_activity_captures_user_commands():
     db = _mkdb(); _seed(db)

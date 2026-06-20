@@ -319,6 +319,39 @@ ipcMain.handle('runtime-paths', () => {
 })
 ipcMain.handle('backend-status', async () => (await httpGet(`http://127.0.0.1:${API_PORT}/api/v1/health`)).ok)
 ipcMain.handle('open-external', (_e, url) => shell.openExternal(url))
+
+// Voice Type — type dictated text into whatever app is focused. macOS uses
+// AppleScript keystrokes (needs Accessibility permission, prompted by the OS);
+// Windows uses PowerShell SendKeys; otherwise we copy to the clipboard.
+ipcMain.handle('dictate-insert', async (_e, text) => {
+  const safe = String(text || '')
+  try {
+    if (process.platform === 'darwin') {
+      const esc = safe.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+      await new Promise((res, rej) => {
+        const ps = spawn('osascript', ['-e', `tell application "System Events" to keystroke "${esc}"`], { env: SPAWN_ENV })
+        ps.on('close', (c) => (c === 0 ? res() : rej(new Error('osascript ' + c))))
+        ps.on('error', rej)
+      })
+      return { method: 'keystrokes' }
+    }
+    if (process.platform === 'win32') {
+      const esc = safe.replace(/'/g, "''")
+      await new Promise((res, rej) => {
+        const ps = spawn('powershell', ['-command',
+          `Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${esc}')`], { env: SPAWN_ENV })
+        ps.on('close', (c) => (c === 0 ? res() : rej(new Error('sendkeys ' + c))))
+        ps.on('error', rej)
+      })
+      return { method: 'keystrokes' }
+    }
+  } catch (err) {
+    // fall through to clipboard
+  }
+  const { clipboard } = require('electron')
+  clipboard.writeText(safe)
+  return { method: 'clipboard' }
+})
 ipcMain.handle('mark-onboarded', () => {
   fs.writeFileSync(path.join(app.getPath('userData'), 'onboarded'), '1'); return true
 })

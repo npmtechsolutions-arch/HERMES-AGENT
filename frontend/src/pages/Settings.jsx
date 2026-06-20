@@ -102,6 +102,8 @@ export default function Settings() {
       {msg && <div className="card mb" style={{ borderColor: msg.kind === 'ok' ? 'var(--green)' : 'var(--red)' }}>
         {msg.kind === 'ok' ? '✓ ' : '⚠ '}{msg.text}</div>}
 
+      <CommonSettings flash={flash} />
+
       {/* ── Hermes Agent Configuration ─────────────────────────────── */}
       <div className="card mb" style={{ borderTop: '3px solid var(--primary)' }}>
         <div className="between mb">
@@ -300,6 +302,48 @@ function ConnectionsCard({ flash, speak }) {
           )
         })}
       </div>
+    </div>
+  )
+}
+
+// Doc 27 #4 / item 8 — common settings every user wants up front: language,
+// notification style, quiet hours, voice replies. Stored locally (local-first).
+function CommonSettings({ flash }) {
+  const [p, setP] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('hermus_prefs') || '{}') } catch { return {} }
+  })
+  const set = (k, v) => { const np = { ...p, [k]: v }; setP(np); localStorage.setItem('hermus_prefs', JSON.stringify(np)) }
+  return (
+    <div className="card mb" style={{ borderTop: '3px solid var(--primary)' }}>
+      <h3 style={{ marginTop: 0 }}><Icon name="settings" size={17} /> Common settings</h3>
+      <div className="grid cols-2" style={{ gap: 16 }}>
+        <Field label="Language">
+          <select value={p.language || 'English'} onChange={(e) => set('language', e.target.value)}>
+            {['English', 'Hindi', 'Tamil', 'Telugu', 'Kannada', 'Marathi', 'Bengali'].map((l) => <option key={l}>{l}</option>)}
+          </select>
+        </Field>
+        <Field label="Notifications">
+          <div className="tabs" style={{ margin: 0 }}>
+            {[['interrupt', 'Notify me'], ['digest', 'Daily digest'], ['off', 'Silent']].map(([k, l]) => (
+              <button key={k} className={(p.notify || 'interrupt') === k ? 'active' : ''} onClick={() => set('notify', k)}>{l}</button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Quiet hours (no interruptions)">
+          <div className="flex" style={{ gap: 6, alignItems: 'center' }}>
+            <input type="time" value={p.quiet_from || '22:00'} onChange={(e) => set('quiet_from', e.target.value)} />
+            <span className="muted">to</span>
+            <input type="time" value={p.quiet_to || '07:00'} onChange={(e) => set('quiet_to', e.target.value)} />
+          </div>
+        </Field>
+        <Field label="Voice replies">
+          <label className="flex" style={{ gap: 8, alignItems: 'center', fontSize: 13 }}>
+            <input type="checkbox" checked={p.voice_replies !== false} onChange={(e) => set('voice_replies', e.target.checked)} />
+            Speak results aloud
+          </label>
+        </Field>
+      </div>
+      <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Saved on this device. Connections & privacy are below.</div>
     </div>
   )
 }

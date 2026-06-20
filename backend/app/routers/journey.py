@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import Principal, current_user
-from ..models import AuditLog, MemoryItem, RoiEntry, Task, now
-from .agents_profile import agent_of_tool, ROLE_DESC
+from ..models import Agent, AuditLog, MemoryItem, Reminder, RoiEntry, Task, now
+from .agents_profile import agent_of_tool, ROLE_DESC, weekly_summary, _op_rows
 
 router = APIRouter(tags=["journey"])
 
@@ -89,6 +89,38 @@ def _headline(total, hours, agent, range):
         return f"No automated work yet this {range} — give your assistant something to do."
     who = f" {agent} was busiest." if agent else ""
     return f"This {range}: {total} thing{'s' if total != 1 else ''} handled · ~{hours} hours saved.{who}"
+
+
+@router.get("/team/overview")
+def agents_overview(p: Principal = Depends(current_user), db: Session = Depends(get_db)):
+    """Part 4 (Action Summary) — every agent with what it's doing now, what's
+    scheduled, recent actions, and this week's stats. One screen, full picture."""
+    agents = db.query(Agent).filter_by(tenant_id=p.tenant_id).all()
+    tasks = db.query(Task).filter_by(tenant_id=p.tenant_id).all()
+    reminders = db.query(Reminder).filter_by(tenant_id=p.tenant_id, status="active").count()
+    recent_all = sorted(_op_rows(db, p.tenant_id, now() - timedelta(days=14)),
+                        key=lambda r: r["at"] or "", reverse=True)
+    PROG_S = {"in_progress", "working", "executing", "planning"}
+    QUEUE_S = {"queued", "scheduled", "pending", "todo", "planning"}
+    out = []
+    for a in agents:
+        mine_tasks = [t for t in tasks if t.assignee_agent_id == a.id]
+        doing = next((t.title for t in mine_tasks if t.status in PROG_S), None)
+        scheduled = [t.title for t in mine_tasks if t.status in QUEUE_S]
+        # Scheduler also "owns" active reminders
+        sched_count = len(scheduled) + (reminders if a.name == "Scheduler" else 0)
+        recent = [r for r in recent_all if agent_of_tool(r["tool"]) == a.name][:5]
+        out.append({
+            "id": a.id, "name": a.name, "role": a.designation or ROLE_DESC.get(a.name, "Assistant"),
+            "status": a.status, "is_ceo": a.is_ceo, "doing_now": doing,
+            "scheduled_count": sched_count, "scheduled": scheduled[:5],
+            "recent": recent, "this_week": weekly_summary(db, p.tenant_id, a.name),
+        })
+    # CEO (Aria) first, then by busyness
+    out.sort(key=lambda x: (not x["is_ceo"], -x["this_week"]["actions"]))
+    return {"agents": out, "totals": {"agents": len(agents),
+            "working": sum(1 for a in agents if a.status == "working"),
+            "scheduled": reminders}}
 
 
 @router.get("/agent-activity")

@@ -84,10 +84,16 @@ _PERSONAL_NAV = [
         ["/tasks", "tasks", "Tasks", None, "M12"],
         ["/inbox", "inbox", "Messages", None, "M13"],
         ["/brain", "brain", "Memory", None, "M5"],
-        ["/my-agents", "users", "My Agents", None, "M3"],
+    ]},
+    {"group": "Your Team", "items": [
+        ["/my-agents", "users", "Agent Tree", None, "M3"],
+        ["/agent-summary", "layers", "Agent Actions"],
+        ["/agent-activity", "bot", "Agent Activity"],
         ["/work-summary", "chart", "Work Summary"],
-        ["/activity", "scroll", "Activity"],
+    ]},
+    {"group": "You", "items": [
         ["/my-activity", "check", "My Activity"],
+        ["/activity", "scroll", "System Activity"],
         ["/settings", "settings", "Settings"],
     ]},
     {"group": "Account", "items": [
@@ -158,9 +164,9 @@ def _seed_editions(db: Session):
                 skin=_build_skin(e), price_book=e["price"], locked_rules=e["locked"],
                 status="published", is_default=e.get("default", False), sort=e["sort"],
             ))
-        elif e.get("nav") and not (row.skin or {}).get("nav"):
-            # Bring the simplified shell onto an already-seeded edition without
-            # clobbering other admin-editable skin fields.
+        elif e.get("nav"):
+            # nav is CODE-defined (not admin-editable), so always re-sync it from
+            # the constant on boot — otherwise nav changes never reach seeded rows.
             row.skin = {**(row.skin or {}), "nav": e["nav"]}
     db.commit()
 
