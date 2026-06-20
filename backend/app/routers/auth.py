@@ -70,6 +70,20 @@ def signup(body: SignupIn, db: Session = Depends(get_db)):
     # reference them (the unit-of-work doesn't order these FKs reliably, so we
     # force it): user → tenant → member/subscription.
     db.add(user); db.flush()
+    # Land every new user on the clean Personal product (the simplified shell +
+    # capabilities-first Home) instead of the 35-item business UI. They can switch
+    # to a Professional/vertical product later from Products. (THE_FIX_personal_ui)
+    try:
+        from .editions import _seed_editions
+        from ..models import Edition
+        _seed_editions(db)
+        personal = (db.query(Edition).filter_by(slug="personal", status="published").first()
+                    or db.query(Edition).filter_by(is_default=True, status="published").first())
+        if personal:
+            tenant.active_edition_id = personal.id
+            tenant.plan_tier = "personal"
+    except Exception:
+        pass   # never block signup on edition seeding; the default-edition fallback still applies
     db.add(tenant); db.flush()
     db.add(member)
     # default everyone onto the trial plan (only if it exists)
