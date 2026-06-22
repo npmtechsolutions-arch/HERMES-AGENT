@@ -30,6 +30,7 @@ import AgentMap from './pages/AgentMap'
 import AgentProfile from './pages/AgentProfile'
 import AgentCreate from './pages/AgentCreate'
 import Capabilities from './pages/Capabilities'
+import Do from './pages/Do'
 import WorkSummary from './pages/WorkSummary'
 import MyActivity from './pages/MyActivity'
 import AgentActivity from './pages/AgentActivity'
@@ -117,6 +118,7 @@ export default function App() {
       <Route path="/my-agents" element={<UserRoute><AgentMap /></UserRoute>} />
       <Route path="/my-agents/new" element={<UserRoute><AgentCreate /></UserRoute>} />
       <Route path="/my-agents/:id" element={<UserRoute><AgentProfile /></UserRoute>} />
+      <Route path="/do" element={<UserRoute><Do /></UserRoute>} />
       <Route path="/capabilities" element={<UserRoute><Capabilities /></UserRoute>} />
       <Route path="/work-summary" element={<UserRoute><WorkSummary /></UserRoute>} />
       <Route path="/my-activity" element={<UserRoute><MyActivity /></UserRoute>} />

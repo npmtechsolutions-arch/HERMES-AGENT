@@ -79,6 +79,7 @@ _ROLE_PRICE = {
 _PERSONAL_NAV = [
     {"group": "Your Assistant", "items": [
         ["/", "home", "Home"],
+        ["/do", "rocket", "Do"],
         ["/capabilities", "sparkles", "What I can do"],
         ["/dictate", "mic", "Voice Type", None, "M36"],
         ["/tasks", "tasks", "Tasks", None, "M12"],
