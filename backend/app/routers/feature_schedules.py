@@ -279,6 +279,16 @@ def skip_next(sid: str, p: Principal = Depends(current_user), db: Session = Depe
     return _dto(s)
 
 
+@router.delete("/feature-schedules/{sid}")
+def cancel(sid: str, p: Principal = Depends(current_user), db: Session = Depends(get_db)):
+    """Cancel a scheduled task for good — removes it and its run history."""
+    s = _get(db, sid, p)
+    db.query(ScheduleRun).filter_by(schedule_id=sid).delete()
+    db.delete(s)
+    db.commit()
+    return {"ok": True, "id": sid, "message": "Scheduled task canceled."}
+
+
 @router.get("/feature-schedules/{sid}/runs")
 def runs(sid: str, p: Principal = Depends(current_user), db: Session = Depends(get_db)):
     _get(db, sid, p)

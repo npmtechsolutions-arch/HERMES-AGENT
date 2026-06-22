@@ -83,6 +83,7 @@ _PERSONAL_NAV = [
         ["/capabilities", "sparkles", "What I can do"],
         ["/dictate", "mic", "Voice Type", None, "M36"],
         ["/tasks", "tasks", "Tasks", None, "M12"],
+        ["/scheduled", "clock", "Scheduled"],
         ["/inbox", "inbox", "Messages", None, "M13"],
         ["/brain", "brain", "Memory", None, "M5"],
     ]},
