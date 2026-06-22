@@ -286,6 +286,12 @@ def decide(aid: str, body: DecideIn, p: Principal = Depends(current_user),
     hub.emit(p.tenant_id, "approval.decided",
              {"approval_id": a.id, "state": a.state})
 
+    # Resume a parked feature-schedule run immediately on approval (Doc 29 §5 —
+    # one unified approval flow; the scheduled tool runs now, not on the next tick).
+    if a.state == "approved" and (a.payload or {}).get("feature_key"):
+        from ..scheduler_exec import resume_after_approval
+        resume_after_approval(db, a)
+
     # Resume / fail the gated task.
     if a.task_id:
         t = db.get(Task, a.task_id)

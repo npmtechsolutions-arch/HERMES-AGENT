@@ -10,8 +10,8 @@ from .config import CORS_ORIGINS
 from .database import Base, engine
 from .events import hub
 from .routers import (admin, agents_advanced, agents_profile, agentsphere, ask, assistant, auth, billing, brain, chatbots,
-                      comms, company, compliance, connections, dictate, dual, editions, leads, mvp,
-                      journey, onboarding, org, pipelines, platform, pricing, recipes, remote, setup, skills,
+                      comms, company, compliance, connections, dictate, dual, editions, feature_schedules,
+                      journey, leads, mvp, onboarding, org, pipelines, platform, pricing, recipes, remote, setup, skills,
                       solutions, tasks, universal, verticals, voice, workflows)
 from .security import decode_token
 
@@ -67,6 +67,7 @@ app.include_router(onboarding.router, prefix=API)
 app.include_router(agents_profile.router, prefix=API)
 app.include_router(agents_advanced.router, prefix=API)
 app.include_router(journey.router, prefix=API)
+app.include_router(feature_schedules.router, prefix=API)
 app.include_router(pricing.router, prefix=API)
 app.include_router(pricing.admin, prefix=API)
 
@@ -79,6 +80,18 @@ def _migrate():
     stmts = [
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS active_edition_id VARCHAR",
         "ALTER TABLE tenants ADD COLUMN IF NOT EXISTS plan_tier VARCHAR DEFAULT 'personal'",
+        # Doc 29 §5.1(b) — feature-schedule columns on the existing schedules table.
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS feature_key VARCHAR",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS user_id VARCHAR",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS params JSON",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS instructions TEXT",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cadence VARCHAR",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS cadence_spec JSON",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS status VARCHAR DEFAULT 'active'",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS label VARCHAR",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS agent VARCHAR",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS last_run_at TIMESTAMPTZ",
+        "ALTER TABLE schedules ADD COLUMN IF NOT EXISTS last_status VARCHAR",
     ]
     try:
         with engine.begin() as conn:
@@ -105,6 +118,13 @@ def startup():
         except Exception as e:  # never let seeding crash startup
             print(f"[startup] seed skipped: {e}")
     hub.bind_loop()
+    # Doc 29 §5.1b executor — fire due feature schedules on a background tick.
+    # Disable with HERMUS_SCHEDULER=0 (tests call run_due_schedules directly).
+    try:
+        from .scheduler_exec import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        print(f"[startup] scheduler not started: {e}")
 
 
 @app.get("/")

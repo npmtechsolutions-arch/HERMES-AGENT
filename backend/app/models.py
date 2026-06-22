@@ -432,6 +432,34 @@ class Schedule(Base, TimestampMixin):
     run_policy = Column(String, default="run_on_wake")
     next_run_at = Column(DateTime(timezone=True))
     consecutive_failures = Column(Integer, default=0)
+    # Doc 29 §5.1(b) — feature schedules: the SAME tool the live mode runs, on a
+    # cadence. A row with feature_key set is a feature schedule (vs a workflow one).
+    # All columns nullable/defaulted → additive (see _migrate ADD COLUMN on boot).
+    feature_key = Column(String)                     # a TOOL_REGISTRY tool name
+    user_id = Column(String)                         # the owner the executor runs as
+    params = Column(JSON, default=dict)              # kwargs passed to call_tool
+    instructions = Column(Text)                      # optional "how" override (#2/#5)
+    cadence = Column(String)                         # daily|weekly|monthly|yearly|custom
+    cadence_spec = Column(JSON, default=dict)        # {type,time,weekday?,day?,month?,cron?}
+    status = Column(String, default="active")        # active|paused
+    label = Column(String)
+    agent = Column(String)
+    last_run_at = Column(DateTime(timezone=True))
+    last_status = Column(String)                     # success|failed|needs_approval
+
+
+class ScheduleRun(Base):
+    """One execution of a feature schedule — the run history (Doc 29 §5.1b /runs,
+    enhancement #3). Populated by the executor phase; this phase only reads it."""
+    __tablename__ = "schedule_runs"
+    id = Column(String, primary_key=True)            # run_...
+    schedule_id = Column(String, index=True)
+    tenant_id = Column(String, index=True)
+    status = Column(String)                          # success|failed|needs_approval
+    summary = Column(Text)
+    error = Column(String)
+    retries = Column(Integer, default=0)
+    at = Column(DateTime(timezone=True), default=now, index=True)
 
 
 class Approval(Base, TimestampMixin):
