@@ -323,9 +323,12 @@ CAPABILITY_GROUPS = [
 
 
 def capabilities():
-    """Grouped, tappable capability catalog for the discovery UI (Doc 27 Part 2.1)."""
+    """Grouped, tappable capability catalog for the discovery UI (Doc 27 Part 2.1)
+    plus the 23 feature cards with live/schedule modes for the Do page (Doc 29 §5.1a)."""
+    from .feature_catalog import build_catalog
     return {"help": HELP_TEXT, "product_line": PRODUCT_LINE,
-            "groups": CAPABILITY_GROUPS, "count": len(TOOL_REGISTRY)}
+            "groups": CAPABILITY_GROUPS, "features": build_catalog(),
+            "count": len(TOOL_REGISTRY)}
 
 
 PRODUCT_LINE = ("HERMUS Personal — your private AI assistant that remembers, "

@@ -34,7 +34,7 @@ router = APIRouter(tags=["agent-profile"])
 ROLE_PREFIXES = {
     "Scheduler": ("reminder.", "routine.", "deadline.", "calendar.", "finance.bill", "finance.track"),
     "Inbox": ("email.", "message.", "whatsapp.", "followup.", "contacts."),
-    "Scribe": ("note.", "document.", "text.", "list."),
+    "Scribe": ("note.", "document.", "text.", "list.", "form."),
     "Finder": ("memory.", "contact.", "web.", "finance.budget", "finance.spending", "finance.report", "finance.categorize", "finance.import"),
     "Aria": ("task.", "briefing.", "roi.", "handoff."),
 }
