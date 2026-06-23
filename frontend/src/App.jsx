@@ -32,6 +32,7 @@ import AgentCreate from './pages/AgentCreate'
 import Capabilities from './pages/Capabilities'
 import Do from './pages/Do'
 import Scheduled from './pages/Scheduled'
+import DailyReport from './pages/DailyReport'
 import WorkSummary from './pages/WorkSummary'
 import MyActivity from './pages/MyActivity'
 import AgentActivity from './pages/AgentActivity'
@@ -121,6 +122,7 @@ export default function App() {
       <Route path="/my-agents/:id" element={<UserRoute><AgentProfile /></UserRoute>} />
       <Route path="/do" element={<UserRoute><Do /></UserRoute>} />
       <Route path="/scheduled" element={<UserRoute><Scheduled /></UserRoute>} />
+      <Route path="/daily-report" element={<UserRoute><DailyReport /></UserRoute>} />
       <Route path="/capabilities" element={<UserRoute><Capabilities /></UserRoute>} />
       <Route path="/work-summary" element={<UserRoute><WorkSummary /></UserRoute>} />
       <Route path="/my-activity" element={<UserRoute><MyActivity /></UserRoute>} />

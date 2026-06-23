@@ -7,20 +7,27 @@ Doc 27 — the user's-eye dashboard layer. Surfaces what the engine already does
 All read existing data (operational memory, audit log, ROI). No engine change.
 """
 import json
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..deps import Principal, current_user
-from ..models import Agent, AuditLog, MemoryItem, Reminder, RoiEntry, Task, now
+from ..models import Agent, Approval, AuditLog, MemoryItem, Reminder, RoiEntry, Task, now
 from .agents_profile import agent_of_tool, ROLE_DESC, weekly_summary, _op_rows
 
 router = APIRouter(tags=["journey"])
 
 RATE_PER_HOUR = 500     # ₹/hr, matches the ROI methodology elsewhere
 MIN_PER_ACTION = 6      # conservative minutes saved per automated action
+REPORT_AGENTS = ["Aria", "Scheduler", "Scribe", "Finder", "Inbox"]
+
+
+def _utc(dt):
+    if not dt:
+        return dt
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
 
 
 def _naive(dt):
@@ -164,3 +171,77 @@ def my_activity(limit: int = 80, p: Principal = Depends(current_user), db: Sessi
                     "detail": r.target, "tool": meta.get("tool"),
                     "at": r.at.isoformat() if r.at else None})
     return {"activity": out}
+
+
+# ── Daily per-agent report (Doc 29 Part 3.5 / §5.1c) ─────────────────────────
+def _day_window(date_str):
+    """[start, end) UTC for a YYYY-MM-DD (default: today UTC)."""
+    if date_str:
+        try:
+            d = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        except ValueError:
+            d = now()
+    else:
+        d = now()
+    start = d.replace(hour=0, minute=0, second=0, microsecond=0)
+    return start, start + timedelta(days=1)
+
+
+@router.get("/reports/daily")
+def daily_report(date: str | None = None, p: Principal = Depends(current_user), db: Session = Depends(get_db)):
+    """Per-agent summary for one day: what each agent did, what failed, what's
+    waiting — plus totals and a spoken narrative for the morning briefing."""
+    start, end = _day_window(date)
+
+    # the per-action spine: call_tool emits one assistant.action audit per run
+    # (live AND scheduled), with meta.tool + meta.ok.
+    audits = (db.query(AuditLog)
+              .filter(AuditLog.chain_key == p.tenant_id, AuditLog.action == "assistant.action")
+              .order_by(AuditLog.id.desc()).limit(2000).all())
+    audits = [a for a in audits if a.at and start <= _utc(a.at) < end]
+    # pending approvals (current "needs you") — attribute scheduled ones to an agent
+    pend = db.query(Approval).filter_by(tenant_id=p.tenant_id, state="pending").all()
+
+    per = {ag: {"agent": ag, "by_tool": {}, "actions": 0, "failures": 0, "pending": 0}
+           for ag in REPORT_AGENTS}
+    for a in audits:
+        meta = a.meta or {}
+        tool = meta.get("tool", "")
+        ag = agent_of_tool(tool) if tool else "Aria"
+        slot = per.setdefault(ag, {"agent": ag, "by_tool": {}, "actions": 0, "failures": 0, "pending": 0})
+        slot["actions"] += 1
+        slot["by_tool"][tool] = slot["by_tool"].get(tool, 0) + 1
+        if meta.get("ok") is False:
+            slot["failures"] += 1
+    for ap in pend:
+        fk = (ap.payload or {}).get("feature_key")
+        ag = agent_of_tool(fk) if fk else "Aria"
+        per.setdefault(ag, {"agent": ag, "by_tool": {}, "actions": 0, "failures": 0, "pending": 0})["pending"] += 1
+
+    agents = []
+    for ag in REPORT_AGENTS:
+        s = per[ag]
+        status = "failed" if s["failures"] else "pending" if s["pending"] else "ok"
+        top = sorted(s["by_tool"].items(), key=lambda x: -x[1])[:3]
+        line = ", ".join(f"{c} × {t.split('.')[-1].replace('_', ' ')}" for t, c in top) or "nothing today"
+        agents.append({**s, "role": ROLE_DESC.get(ag, ""), "status": status, "summary": line})
+
+    total_actions = sum(s["actions"] for s in per.values())
+    total_fail = sum(s["failures"] for s in per.values())
+    total_pending = sum(s["pending"] for s in per.values())
+    roi = db.query(RoiEntry).filter(RoiEntry.tenant_id == p.tenant_id).all()
+    roi_min = sum(float(r.value_minutes or 0) for r in roi if r.at and start <= _utc(r.at) < end)
+    mins = round(total_actions * MIN_PER_ACTION + roi_min)
+    hours = round(mins / 60, 1)
+    needed = total_pending + total_fail
+
+    label = start.strftime("%A, %d %b")
+    narrative = (f"Report for {label}. " + (
+        f"Your team handled {total_actions} thing{'s' if total_actions != 1 else ''}, "
+        f"saving about {hours} hours. " if total_actions else "A quiet day — nothing ran. ")
+        + (f"{needed} need{'s' if needed == 1 else ''} you." if needed else "Nothing needs you."))
+
+    return {"date": start.strftime("%Y-%m-%d"), "label": label, "agents": agents,
+            "totals": {"actions": total_actions, "failures": total_fail, "pending": total_pending,
+                       "needed_you": needed, "hours_saved": hours, "money_value_inr": int(hours * RATE_PER_HOUR)},
+            "narrative": narrative}

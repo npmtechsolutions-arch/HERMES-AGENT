@@ -94,6 +94,31 @@ def test_my_activity_captures_user_commands():
     assert any("call the bank" in (a["detail"] or "") for a in asks)
 
 
+# ── daily per-agent report (Part 3.5 / §5.1c) ─────────────────────────────────
+def test_daily_report_per_agent_and_totals():
+    db = _mkdb(); _seed(db)
+    rep = J.daily_report(None, _P(), db)
+    names = [a["agent"] for a in rep["agents"]]
+    assert names == ["Aria", "Scheduler", "Scribe", "Finder", "Inbox"]   # fixed order
+    sched = next(a for a in rep["agents"] if a["agent"] == "Scheduler")
+    assert sched["actions"] >= 2 and sched["status"] in ("ok", "pending", "failed")
+    assert rep["totals"]["actions"] >= 4 and rep["totals"]["hours_saved"] > 0
+    assert "Report for" in rep["narrative"]
+
+
+def test_daily_report_counts_pending_as_needs_you():
+    from app.models import Approval, now as _n
+    from app.security import ulid
+    db = _mkdb(); _seed(db)
+    db.add(Approval(id=ulid("apv"), tenant_id="tnt_j", action_summary="forget x",
+                    payload={"feature_key": "memory.forget"}, rule_id="SCHED-GATE", state="pending"))
+    db.commit()
+    rep = J.daily_report(None, _P(), db)
+    assert rep["totals"]["pending"] >= 1 and rep["totals"]["needed_you"] >= 1
+    finder = next(a for a in rep["agents"] if a["agent"] == "Finder")   # memory.forget → Finder
+    assert finder["pending"] >= 1 and finder["status"] in ("pending", "failed")
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     passed = 0

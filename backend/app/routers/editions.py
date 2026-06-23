@@ -92,6 +92,7 @@ _PERSONAL_NAV = [
         ["/agent-summary", "layers", "Agent Actions"],
         ["/agent-activity", "bot", "Agent Activity"],
         ["/work-summary", "chart", "Work Summary"],
+        ["/daily-report", "scroll", "Daily Report"],
     ]},
     {"group": "You", "items": [
         ["/my-activity", "check", "My Activity"],
