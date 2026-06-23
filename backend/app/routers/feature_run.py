@@ -33,7 +33,14 @@ def run_feature(key: str, body: RunIn, p: Principal = Depends(current_user), db:
                                   agent_id=agent_of_tool(key), grants={"*"}),
                       db=db, approved=body.approved)
     r = call_tool(key, ctx, **(body.params or {}))   # the SAME tool the scheduler runs
-    db.commit()
     out = _result_dto(key, r)
     out["agent"] = agent_of_tool(key)
+    # persist v1 so a content result can be ✨ Refined (Doc 30 Phase 1)
+    if r.ok:
+        from ..refine import create_v1
+        rid = create_v1(db, tenant_id=p.tenant_id, user_id=p.user_id, tool=key,
+                        params=body.params or {}, result=r)
+        if rid:
+            out["result_id"] = rid
+    db.commit()
     return out

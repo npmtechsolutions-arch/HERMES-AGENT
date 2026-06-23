@@ -462,6 +462,24 @@ class ScheduleRun(Base):
     at = Column(DateTime(timezone=True), default=now, index=True)
 
 
+class ResultVersion(Base, TimestampMixin):
+    """Refine-with-chat history (Doc 30 Phase 1). Versions of one result, grouped
+    by anchor_id: v1 is the original tool output, v2+ are refinements. is_current
+    marks the active one; revert flips it. Every version is in Activity (§1.3)."""
+    __tablename__ = "result_versions"
+    id = Column(String, primary_key=True)            # rv_...
+    anchor_id = Column(String, index=True)           # groups all versions of one result
+    tenant_id = Column(String, index=True)
+    user_id = Column(String)
+    version = Column(Integer)                        # 1, 2, 3 …
+    tool = Column(String)                            # origin tool (context/label)
+    params = Column(JSON, default=dict)
+    instruction = Column(Text)                       # the refine instruction (null for v1)
+    output = Column(Text)                            # this version's content
+    summary = Column(String)
+    is_current = Column(Boolean, default=True)
+
+
 class Approval(Base, TimestampMixin):
     __tablename__ = "approvals"
     id = Column(String, primary_key=True)            # apv_...

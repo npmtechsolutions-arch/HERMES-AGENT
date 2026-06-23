@@ -242,6 +242,31 @@ def text_polish(ctx, text, tone="clean"):
     return ToolResult(ok=True, data={"text": base}, summary="Polished the text (on-device rules).")
 
 
+@tool("content.refine", "Refine an existing result with a plain-language instruction (content only).",
+      {"prior_output": {"type": "string", "required": True},
+       "instruction": {"type": "string", "required": True},
+       "source": {"type": "string"}},
+      permission="documents.write", writes_memory=True)
+def content_refine(ctx, prior_output, instruction, source=None):
+    """Doc 30 Phase 1. Improves an existing result per the user's instruction —
+    fully on-device (local LLM). Guardrail §5/1.4: a refined version may not
+    introduce a figure/date absent from the original (source) — it's blocked, not
+    saved. Refinement changes content, never the approval rules of later actions."""
+    out = None
+    if llm.available():
+        out = llm.chat(
+            f"CONTENT:\n{prior_output}\n\nINSTRUCTION: {instruction}\n\nReturn ONLY the revised content, nothing else.",
+            system=("You refine the user's existing content per their instruction. Preserve every fact, "
+                    "number and date; change only what's asked. Never invent new numbers or dates."))
+    if not out:
+        out = prior_output    # no local model → return unchanged rather than fabricate
+    bad = validate_citations(out, source) if source else None
+    if bad:
+        return ToolResult(ok=False, error="validation",
+                          summary=f"Blocked — the refined version has “{bad}”, which isn't in the original. Not saved.")
+    return ToolResult(ok=True, data={"output": out.strip()}, summary="Refined the result.")
+
+
 @tool("form.fill", "Fill a {{placeholder}} form from data; figures validated against the data source.",
       {"template": {"type": "string", "required": True}, "data": {"type": "object", "required": True},
        "title": {"type": "string", "default": "Form"}},

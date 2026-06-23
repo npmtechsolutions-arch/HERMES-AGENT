@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import Icon from '../components/Icon'
 import { Loading, PageHead } from '../components/ui'
+import RefineChat from '../components/RefineChat'
 
 // Doc 29 Part 3.1 — the "Do" page. Reads caps.features and renders the 23
 // features as cards grouped by agent. Live → POST /features/{key}/run (the exact
@@ -48,6 +49,7 @@ function FeatureCard({ card }) {
   const [state, setState] = useState('idle')   // idle | working | done | approval | error
   const [result, setResult] = useState(null)
   const [schedOpen, setSchedOpen] = useState(false)
+  const [refining, setRefining] = useState(false)
   const set = (n, v) => setVals((p) => ({ ...p, [n]: v }))
 
   // tool params from field values (datetime → tz-aware ISO so reminder.create &c
@@ -126,9 +128,15 @@ function FeatureCard({ card }) {
             {state === 'approval' ? '⚠ ' : state === 'error' ? '✕ ' : '✓ '}{result.summary}
           </div>
           {state === 'approval' && <Link className="btn sm mt" to="/approvals">Review in Approvals</Link>}
-          {state === 'done' && !result.scheduled && <Link className="muted" style={{ fontSize: 11, display: 'inline-block', marginTop: 4 }} to="/activity">View in Activity →</Link>}
+          {state === 'done' && !result.scheduled && (
+            <div className="flex" style={{ gap: 10, alignItems: 'center', marginTop: 4 }}>
+              {result.result_id && <button className="btn sm ghost" onClick={() => setRefining(true)}><Icon name="sparkles" size={13} /> Refine</button>}
+              <Link className="muted" style={{ fontSize: 11 }} to="/activity">View in Activity →</Link>
+            </div>
+          )}
         </div>
       )}
+      {refining && result?.result_id && <RefineChat resultId={result.result_id} onClose={() => setRefining(false)} />}
 
       <div className="flex" style={{ gap: 8, position: 'relative' }}>
         <button className="btn sm" disabled={state === 'working' || missing.length > 0}
